@@ -1,0 +1,56 @@
+1. User Experience & UI/UX Issues
+What are the most common complaints about the app’s user interface and design?
+
+Are users facing issues with navigation or accessibility features?
+
+What percentage of negative reviews mention difficulty in using core features?
+
+How does the review sentiment change after a UI update?
+
+2. Performance & Bug Detection
+What percentage of reviews mention crashes, slow performance, or bugs?
+
+Which app versions have the highest number of complaints about technical issues?
+
+Are there specific device brands or OS versions mentioned frequently in complaints?
+
+Is there a pattern of negative reviews after a new update?
+
+3. Feature Requests & Missing Functionalities
+What are the top 5 features users are requesting the most?
+
+Are there recurring requests for a specific feature over multiple app versions?
+
+What percentage of negative reviews are due to missing expected functionalities?
+
+4. Customer Support & Responsiveness
+How often do users complain about poor customer support?
+
+How long does it typically take for the company to respond to negative reviews?
+
+What is the average sentiment of users who receive a reply from the company?
+
+5. Competitor Insights & Market Positioning
+How many users mention switching to a competitor’s app?
+
+What features do users praise in competitor apps that they feel are missing in this app?
+
+How do reviews compare to top competitors in the same category?
+
+6. Monetization & Subscription Feedback
+How many users feel the app’s pricing is too high or unfair?
+
+What percentage of complaints are related to in-app purchases or subscription issues?
+
+Do users feel they are getting enough value for their money?
+
+7. Sentiment Analysis & User Retention
+What percentage of users are loyal vs. first-time reviewers?
+
+How does sentiment change over time (weekly/monthly trends)?
+
+Are long-term users becoming more positive or negative over time?
+
+Which words appear most frequently in 1-star and 5-star reviews?
+
+How many users mention returning to the app after previously uninstalling it?
