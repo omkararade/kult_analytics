@@ -25,7 +25,7 @@ def setup_driver():
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
-def scroll_reviews_panel(driver, panel, max_attempts=50):
+def scroll_reviews_panel(driver, panel, max_attempts=60):
     last_height = driver.execute_script("return arguments[0].scrollHeight", panel)
     
     for attempt in range(max_attempts):
@@ -42,7 +42,7 @@ def scroll_reviews_panel(driver, panel, max_attempts=50):
 
 def scrape_reviews():
     driver = setup_driver()
-    app_url = "https://play.google.com/store/apps/details?id=beauty.kult.app&hl=en_IN"
+    app_url = "https://play.google.com/store/apps/details?id=com.cuvora.carinfo&hl=en_IN"
     
     try:
         print("Starting review scraping...")
