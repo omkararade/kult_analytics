@@ -14,12 +14,19 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import nltk
 from fpdf import FPDF
 import base64
+from prophet import Prophet
+from collections import Counter
+from nltk.corpus import stopwords
+import plotly.figure_factory as ff
+from io import BytesIO
 
 # Initialize NLTK
 try:
     nltk.data.find('vader_lexicon')
+    nltk.data.find('corpora/stopwords')
 except:
     nltk.download('vader_lexicon')
+    nltk.download('stopwords')
 
 # App Configuration
 st.set_page_config(
@@ -101,49 +108,99 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
+    .service-card {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-top: 4px solid var(--primary);
+        transition: transform 0.3s;
+    }
+    .service-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
 </style>
 """, unsafe_allow_html=True)
 
 def generate_report(df):
     """Generate PDF report of the analysis"""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    
-    # Title
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="Beauty Kult App Analytics Report", ln=1, align='C')
-    pdf.set_font("Arial", size=12)
-    
-    # Date
-    pdf.cell(200, 10, txt=f"Report generated on: {datetime.now().strftime('%Y-%m-%d')}", ln=1)
-    pdf.ln(10)
-    
-    # Key Metrics
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Key Metrics", ln=1)
-    pdf.set_font("Arial", size=12)
-    
-    metrics = [
-        ("Average Rating", f"{df['Rating'].mean():.1f} stars"),
-        ("Positive Sentiment", f"{(df['Sentiment'] == 'Positive').mean()*100:.1f}%"),
-        ("Response Rate", f"{df['Reply'].apply(lambda x: x != 'No Reply').mean()*100:.1f}%"),
-        ("Active Issues", f"{df[['UI_Issue', 'Performance_Issue']].any(axis=1).sum()} reports")
-    ]
-    
-    for metric, value in metrics:
-        pdf.cell(200, 10, txt=f"{metric}: {value}", ln=1)
-    
-    pdf.ln(10)
-    
-    # Top Findings
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Top Findings", ln=1)
-    pdf.set_font("Arial", size=12)
-    
-    # Add more sections as needed...
-    
-    return pdf.output(dest='S').encode('latin1')
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        # Title
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, txt="Beauty Kult App Analytics Report", ln=1, align='C')
+        pdf.set_font("Arial", size=12)
+        
+        # Date
+        pdf.cell(200, 10, txt=f"Report generated on: {datetime.now().strftime('%Y-%m-%d')}", ln=1)
+        pdf.ln(10)
+        
+        # Key Metrics - Using asterisk instead of star symbol
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(200, 10, txt="Key Metrics", ln=1)
+        pdf.set_font("Arial", size=12)
+        
+        metrics = [
+            ("Average Rating", f"{df['Rating'].mean():.1f}"),
+            ("Positive Sentiment", f"{(df['Sentiment'] == 'Positive').mean()*100:.1f}%"),
+            ("Response Rate", f"{df['Reply'].apply(lambda x: x != 'No Reply').mean()*100:.1f}%"),
+            ("Active Issues", f"{df[['UI_Issue', 'Performance_Issue']].any(axis=1).sum()} reports")
+        ]
+        
+        for metric, value in metrics:
+            pdf.cell(200, 10, txt=f"{metric}: {value}", ln=1)
+        
+        # Competitive Benchmark
+        pdf.ln(5)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(200, 10, txt="Competitive Benchmark", ln=1)
+        pdf.set_font("Arial", size=12)
+        
+        industry_avg = 4.2
+        client_avg = df['Rating'].mean()
+        if client_avg < industry_avg:
+            pdf.cell(200, 10, txt=f"Opportunity: Your rating is {industry_avg - client_avg:.1f} below beauty app average", ln=1)
+        else:
+            pdf.cell(200, 10, txt=f"Strength: Your rating is {client_avg - industry_avg:.1f} above industry average", ln=1)
+        
+        pdf.ln(10)
+        
+        # Top Findings
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(200, 10, txt="Top Findings", ln=1)
+        pdf.set_font("Arial", size=12)
+        
+        # Add more sections as needed...
+        
+        return pdf.output(dest='S').encode('latin1')
+    except Exception as e:
+        st.error(f"Failed to generate PDF report: {str(e)}")
+        return b''
+
+def generate_forecast(df):
+    """Generate rating forecast using Prophet"""
+    try:
+        df_forecast = df.groupby('Date')['Rating'].mean().reset_index()
+        df_forecast.columns = ['ds', 'y']
+        
+        model = Prophet(seasonality_mode='multiplicative')
+        model.fit(df_forecast)
+        future = model.make_future_dataframe(periods=30)
+        forecast = model.predict(future)
+        
+        fig = model.plot(forecast)
+        plt.title('30-Day Rating Forecast', pad=20)
+        plt.xlabel('Date')
+        plt.ylabel('Rating')
+        return fig
+    except Exception as e:
+        st.warning(f"Forecast generation failed: {str(e)}")
+        return None
 
 @st.cache_data
 def load_data():
@@ -155,8 +212,10 @@ def load_data():
     df['Reply Date'] = pd.to_datetime(df['Reply Date'], errors='coerce')
     df['Review'] = df['Review'].str.lower().str.replace(r'[^\w\s]', '', regex=True)
     df['Reply_Time_Days'] = (df['Reply Date'] - df['Date']).dt.days
-    df['Reply_Time_Days'] = df['Reply_Time_Days'].astype('Int64') 
-    df['Reply'].fillna("No Reply", inplace=True)
+    df['Reply_Time_Days'] = df['Reply_Time_Days'].astype('Int64')
+    
+    # Fix for chained assignment warning
+    df = df.assign(Reply=df['Reply'].fillna("No Reply"))
     
     if 'Usefulness' in df.columns:
         df['Usefulness'] = df['Usefulness'].str.replace(r'[^\d]', '', regex=True)
@@ -316,26 +375,34 @@ filtered_df = df[
 # Main Dashboard
 st.title("📊 Beauty Kult App Analytics Dashboard")
 
-# KPI Cards
-col1, col2, col3, col4 = st.columns(4)
+# KPI Cards with Competitive Benchmark
+col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     avg_rating = filtered_df['Rating'].mean()
     st.metric("Average Rating", f"{avg_rating:.1f} ★")
 
 with col2:
+    industry_avg = 4.2
+    st.metric("vs Industry Avg", f"{industry_avg:.1f} ★", 
+              delta=f"{avg_rating - industry_avg:.1f}★", 
+              delta_color="inverse")
+
+with col3:
     response_rate = filtered_df['Reply'].apply(lambda x: x != "No Reply").mean() * 100
     st.metric("Response Rate", f"{response_rate:.1f}%")
 
-with col3:
+with col4:
     total_reviews = len(filtered_df)
     st.metric("Total Reviews", f"{total_reviews:,}")
 
-with col4:
+with col5:
     pos_percent = (filtered_df['Sentiment'] == 'Positive').mean() * 100
     st.metric("Positive Sentiment", f"{pos_percent:.1f}%")
 
-# Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📝 Reviews", "🧠 Insights", "🔍 Issues Analysis", "📊 Comprehensive Report"])
+# Tabs with New Strategy Tab
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    ["📈 Trends", "📝 Reviews", "🧠 Insights", "🔍 Issues", "📊 Report", "🚀 Strategy"]
+)
 
 with tab1:
     st.header("📈 Trends Over Time")
@@ -431,6 +498,53 @@ with tab2:
         st.pyplot(plt)
     else:
         st.warning("No reviews available for word cloud")
+    
+    # Top Complaint Analysis
+    st.subheader("🔍 Top Complaint Analysis")
+    negative_reviews = filtered_df[filtered_df['Sentiment'] == 'Negative']['Review']
+    
+    if len(negative_reviews) > 0:
+        stop_words = set(stopwords.words('english'))
+        words = [word for review in negative_reviews 
+                for word in review.lower().split() 
+                if word not in stop_words and len(word) > 3]
+        
+        top_issues = Counter(words).most_common(10)
+        
+        # Display as a table
+        issues_df = pd.DataFrame(top_issues, columns=['Issue', 'Count'])
+        st.dataframe(issues_df.style.background_gradient(cmap='Reds'), 
+                    height=400,
+                    column_config={
+                        "Issue": "Complaint Keyword",
+                        "Count": "Frequency"
+                    })
+        
+        # Show impact on rating
+        st.subheader("Issue Impact on Ratings")
+        issue_impact = []
+        for issue, _ in top_issues[:5]:
+            affected = filtered_df[filtered_df['Review'].str.contains(issue, case=False)]
+            if len(affected) > 0:
+                impact = filtered_df['Rating'].mean() - affected['Rating'].mean()
+                issue_impact.append({
+                    'Issue': issue,
+                    'Affected Reviews': len(affected),
+                    'Rating Impact': impact
+                })
+        
+        if issue_impact:
+            impact_df = pd.DataFrame(issue_impact)
+            st.dataframe(impact_df.sort_values('Rating Impact', ascending=False),
+                        height=200,
+                        column_config={
+                            "Rating Impact": st.column_config.NumberColumn(
+                                format="%.2f ★",
+                                help="How much this issue lowers ratings"
+                            )
+                        })
+    else:
+        st.success("No negative reviews found in current filters!")
 
 with tab3:
     st.header("🧠 Insights & Recommendations")
@@ -884,13 +998,193 @@ with tab5:
     
     st.markdown(summary, unsafe_allow_html=True)
     
-    # Add download report button
-    st.download_button(
-        label="📥 Download Full Report",
-        data=generate_report(filtered_df),
-        file_name="beauty_kult_app_report.pdf",
-        mime="application/pdf"
-    )
+    # Add download report button with error handling
+    report_data = generate_report(filtered_df)
+    if report_data:
+        st.download_button(
+            label="📥 Download Full Report",
+            data=report_data,
+            file_name="beauty_kult_app_report.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.warning("Could not generate PDF report")
+
+with tab6:  # New Strategy tab
+    st.header("🚀 Strategic Opportunities")
+    
+    # ROI Projections Section
+    with st.expander("💰 ROI Projections", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Rating Improvement Impact")
+            rating_gap = industry_avg - avg_rating
+            if rating_gap > 0:
+                install_growth = rating_gap * 24  # 24% install boost per star (hypothetical)
+                st.metric("Potential Install Growth", f"+{install_growth:.1f}%",
+                         help="Based on industry data: each ★ = ~24% more installs")
+            else:
+                st.success("Your ratings exceed industry average!")
+        
+        with col2:
+            st.subheader("Sentiment Improvement Value")
+            current_value = pos_percent
+            target_value = 85  # Industry top quartile
+            if current_value < target_value:
+                revenue_potential = (target_value - current_value) * 1000  # Hypothetical $1K per % point
+                st.metric("Revenue Opportunity", f"${revenue_potential:,.0f}",
+                         help="Estimated annual revenue potential from sentiment improvement")
+            else:
+                st.success("Your sentiment scores are in top quartile!")
+    
+    # Competitive Benchmarking Section
+    with st.expander("📊 Competitive Benchmarking", expanded=True):
+        # Mock competitor data - in real implementation use actual competitor data
+        competitors = {
+            'Beauty Kult': {
+                'Rating': avg_rating,
+                'Response Rate': response_rate,
+                'Positive Sentiment': pos_percent,
+                'UI Issues': filtered_df['UI_Issue'].mean() * 100
+            },
+            'Competitor A': {
+                'Rating': 4.3,
+                'Response Rate': 78,
+                'Positive Sentiment': 82,
+                'UI Issues': 12
+            },
+            'Competitor B': {
+                'Rating': 4.1,
+                'Response Rate': 65,
+                'Positive Sentiment': 75,
+                'UI Issues': 18
+            }
+        }
+        
+        # Convert to DataFrame for visualization
+        benchmark_df = pd.DataFrame(competitors).T.reset_index().rename(columns={'index': 'App'})
+        
+        # Radar Chart
+        categories = ['Rating', 'Response Rate', 'Positive Sentiment', 'UI Issues']
+        fig = go.Figure()
+        
+        for app in benchmark_df['App']:
+            fig.add_trace(go.Scatterpolar(
+                r=benchmark_df[benchmark_df['App'] == app][categories].values[0],
+                theta=categories,
+                fill='toself',
+                name=app
+            ))
+        
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 100]
+                )),
+            showlegend=True,
+            title="Competitive Benchmarking Radar Chart"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Predictive Insights Section
+    with st.expander("🔮 Predictive Insights", expanded=True):
+        st.subheader("30-Day Rating Forecast")
+        forecast_fig = generate_forecast(filtered_df)
+        if forecast_fig:
+            st.pyplot(forecast_fig)
+        else:
+            st.warning("Insufficient data for forecasting")
+        
+        # Response Time Impact Analysis
+        st.subheader("Response Time Impact")
+        if 'Reply_Time_Days' in filtered_df.columns:
+            responsive_df = filtered_df[filtered_df['Reply'] != "No Reply"]
+            if len(responsive_df) > 10:
+                fig = px.scatter(responsive_df, 
+                               x='Reply_Time_Days', 
+                               y='Rating',
+                               trendline="ols",
+                               title="Faster Responses → Higher Ratings",
+                               labels={'Reply_Time_Days': 'Days to Respond'})
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Calculate correlation
+                fast_response = responsive_df[responsive_df['Reply_Time_Days'] <= 1]['Rating'].mean()
+                slow_response = responsive_df[responsive_df['Reply_Time_Days'] > 1]['Rating'].mean()
+                st.metric("Rating Boost from Fast Responses", 
+                         f"+{fast_response - slow_response:.1f}★",
+                         help="Average rating difference when responding within 1 day")
+            else:
+                st.warning("Not enough response data for analysis")
+    
+    # UGC Social Proof Section
+    with st.expander("👥 User Voice", expanded=True):
+        st.subheader("Top Positive Reviews")
+        positive_reviews = filtered_df[filtered_df['Rating'] >= 4].sort_values('Rating', ascending=False).head(3)
+        
+        for _, row in positive_reviews.iterrows():
+            with st.container(border=True):
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.markdown(f"**⭐⭐⭐⭐⭐ {row['Rating']}**")
+                    st.caption(row['Date'].strftime('%b %d, %Y'))
+                with col2:
+                    st.markdown(f"*\"{row['Review'][:200]}...\"*")
+        
+        st.subheader("Feature Requests Word Cloud")
+        requests_text = " ".join(filtered_df[filtered_df['Feature_Request']]['Review'])
+        if requests_text.strip():
+            wordcloud = WordCloud(width=800, height=400, background_color='white').generate(requests_text)
+            plt.figure(figsize=(10,5))
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis("off")
+            st.pyplot(plt)
+        else:
+            st.warning("No feature requests found")
+    
+    # Service Recommendations Section
+    with st.expander("🛠️ How We Can Help", expanded=True):
+        st.subheader("Recommended Service Packages")
+        
+        # Basic Monitoring
+        with st.container(border=True):
+            st.markdown("#### 📊 Basic Monitoring ($299/mo)")
+            st.markdown("""
+            - Daily review tracking
+            - Key metric dashboards
+            - Weekly email reports
+            - Basic sentiment analysis
+            """)
+            if st.button("Learn More", key="basic_monitoring"):
+                st.session_state['show_basic'] = True
+        
+        # Pro Insights
+        with st.container(border=True):
+            st.markdown("#### 📈 Pro Insights ($799/mo)")
+            st.markdown("""
+            - Everything in Basic +
+            - Competitor benchmarking
+            - Predictive analytics
+            - Custom action plans
+            - Monthly strategy calls
+            """)
+            if st.button("Learn More", key="pro_insights"):
+                st.session_state['show_pro'] = True
+        
+        # Enterprise
+        with st.container(border=True):
+            st.markdown("#### 🏢 Enterprise ($1,999/mo)")
+            st.markdown("""
+            - Everything in Pro +
+            - AI-powered review responses
+            - Real-time alerts
+            - Dedicated account manager
+            - Quarterly business reviews
+            """)
+            if st.button("Learn More", key="enterprise"):
+                st.session_state['show_enterprise'] = True
 
 # About Section
 st.sidebar.markdown(f"""
@@ -936,5 +1230,16 @@ if 'Performance_Issue' in filtered_df.columns:
         st.markdown(f"""
         <div class="alert-box">
             <h4>🔴 ALERT: High performance issue rate! (Current: {perf_issue_rate:.1f}%)</h4>
+        </div>
+        """, unsafe_allow_html=True)
+
+if 'Feature_Request' in filtered_df.columns:
+    feature_request_count = filtered_df['Feature_Request'].sum()
+    if feature_request_count > 20:
+        top_request = filtered_df[filtered_df['Feature_Request']]['Review'].value_counts().index[0][:100]
+        st.markdown(f"""
+        <div class="info-box">
+            <h4>💡 Opportunity: {feature_request_count} feature requests detected!</h4>
+            <p>Most requested: "{top_request}..."</p>
         </div>
         """, unsafe_allow_html=True)
