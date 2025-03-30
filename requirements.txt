@@ -1,0 +1,15 @@
+gensim
+streamlit
+pandas
+matplotlib
+seaborn
+wordcloud
+textblob
+scikit-learn
+plotly
+nltk
+fpdf
+prophet
+numpy
+collections
+base64
