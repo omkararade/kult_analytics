@@ -13,3 +13,4 @@ prophet
 numpy
 collections
 base64
+prophet

@@ -33,7 +33,7 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Carinfo App Analytics Dashboard",
+    page_title="Beauty Kult App Analytics Dashboard",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -65,6 +65,7 @@ window.addEventListener('load', function() {
 """)
                       
 # Custom CSS Styling
+
 st.markdown("""
 <style>
     :root {
@@ -161,7 +162,7 @@ def generate_report(df):
         
         # Title
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, txt="Car Info App Analytics Report", ln=1, align='C')
+        pdf.cell(200, 10, txt="Beauty Kult App Analytics Report", ln=1, align='C')
         pdf.set_font("Arial", size=12)
         
         # Date
@@ -422,7 +423,7 @@ filtered_df = df[
 ].copy()
 
 # Main Dashboard
-st.title("Car Info App Analytics Dashboard")
+st.title("Kult App Analytics Dashboard")
 
 # KPI Cards with Competitive Benchmark
 col1, col2, col3, col4,col5 = st.columns(5)
@@ -569,6 +570,7 @@ with tab1:
     )
     st.plotly_chart(fig, use_container_width=True)
 
+    st.subheader("Emerging Issues Timeline")
 
     # Aggregate all issue types and replace 0% with NaN
     issues_trend = filtered_df.groupby('Month_Year').agg({
@@ -1645,7 +1647,7 @@ with tab5:
         st.download_button(
             label="📥 Download Full Report",
             data=report_data,
-            file_name="Car Info_app_report.pdf",
+            file_name="beauty_kult_app_report.pdf",
             mime="application/pdf"
         )
     else:
@@ -1683,7 +1685,7 @@ with tab6:  # New Strategy tab
     with st.expander("📊 Competitive Benchmarking", expanded=True):
         # Mock competitor data - in real implementation use actual competitor data
         competitors = {
-            'Car Info': {
+            'Beauty Kult': {
                 'Rating': avg_rating,
                 'Response Rate': response_rate,
                 'Positive Sentiment': pos_percent,
@@ -1833,7 +1835,7 @@ st.sidebar.markdown(f"""
 ### About This Dashboard
 
 **Purpose:**  
-Comprehensive analysis of Car Info app reviews to identify improvement opportunities.
+Comprehensive analysis of Beauty Kult app reviews to identify improvement opportunities.
 
 **Data Source:**  
 Google Play Store reviews ({datetime.now().strftime('%Y-%m-%d')})

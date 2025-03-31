@@ -19,9 +19,6 @@ from collections import Counter
 from nltk.corpus import stopwords
 import plotly.figure_factory as ff
 from io import BytesIO
-import matplotlib.patheffects as PathEffects
-from prophet.plot import plot_plotly, plot_components_plotly
-from matplotlib import cm
 
 # Initialize NLTK
 try:
@@ -33,37 +30,12 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Carinfo App Analytics Dashboard",
+    page_title="Beauty Kult App Analytics Dashboard",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom Tab Switcher
-st.components.v1.html("""
-<script>
-function switchToTab(tabName) {
-    const targetName = tabName.replace(/_/g, ' ').toLowerCase();
-    const tabs = document.querySelectorAll('[data-baseweb="tab"]');
-    tabs.forEach(tab => {
-        const tabText = tab.textContent.trim().replace(/\s+/g, ' ').toLowerCase();
-        if (tabText === targetName) {
-            tab.click();
-        }
-    });
-    window.location.hash = tabName;
-    return false;
-}
-// Check hash on page load
-window.addEventListener('load', function() {
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        switchToTab(hash);
-    }
-});
-</script>
-""")
-                      
 # Custom CSS Styling
 st.markdown("""
 <style>
@@ -161,7 +133,7 @@ def generate_report(df):
         
         # Title
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, txt="Car Info App Analytics Report", ln=1, align='C')
+        pdf.cell(200, 10, txt="Beauty Kult App Analytics Report", ln=1, align='C')
         pdf.set_font("Arial", size=12)
         
         # Date
@@ -176,7 +148,6 @@ def generate_report(df):
         metrics = [
             ("Average Rating", f"{df['Rating'].mean():.1f}"),
             ("Positive Sentiment", f"{(df['Sentiment'] == 'Positive').mean()*100:.1f}%"),
-            ("Negative Sentiment", f"{(df['Sentiment'] == 'Negative').mean()*100:.1f}%"),
             ("Reply to Review Rate", f"{df['Reply'].apply(lambda x: x != 'No Reply').mean()*100:.1f}%"),
             ("Active Issues", f"{df[['UI_Issue', 'Performance_Issue']].any(axis=1).sum()} reports")
         ]
@@ -211,37 +182,26 @@ def generate_report(df):
         st.error(f"Failed to generate PDF report: {str(e)}")
         return b''
 
-# 1. Correct Forecast Function
 def generate_forecast(df):
-    """Generate rating forecast using Prophet with error handling"""
+    """Generate rating forecast using Prophet"""
     try:
-        # Validate data
-        if df.empty or pd.isnull(df['Date']).any():
-            raise ValueError("Missing date values in dataset")
-            
-        if len(df) < 60:
-            raise ValueError("Minimum 60 data points required")
-            
-        # Prepare data
-        df_forecast = df.set_index('Date').resample('D')['Rating'].mean().reset_index()
+        df_forecast = df.groupby('Date')['Rating'].mean().reset_index()
         df_forecast.columns = ['ds', 'y']
-        df_forecast = df_forecast.dropna()
         
-        # Create model
         model = Prophet(seasonality_mode='multiplicative')
         model.fit(df_forecast)
-        
-        # Generate forecast
-        future = model.make_future_dataframe(periods=180)
+        future = model.make_future_dataframe(periods=30)
         forecast = model.predict(future)
         
-        # Return Plotly figure
-        return plot_plotly(model, forecast)
-        
+        fig = model.plot(forecast)
+        plt.title('30-Day Rating Forecast', pad=20)
+        plt.xlabel('Date')
+        plt.ylabel('Rating')
+        return fig
     except Exception as e:
-        st.error(f"Forecast failed: {str(e)}")
+        st.warning(f"Forecast generation failed: {str(e)}")
         return None
-    
+
 @st.cache_data
 def load_data():
     df = pd.read_csv("google_play_reviews.csv")
@@ -418,136 +378,62 @@ with st.sidebar.expander("⭐ Rating & Sentiment", expanded=True):
 filtered_df = df[
     (df['Rating'].between(rating_range[0], rating_range[1])) &
     (df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
-    ((df['Sentiment'].isin(sentiment_filter)) if sentiment_filter else True)
+    (df['Sentiment'].isin(sentiment_filter))
 ].copy()
 
 # Main Dashboard
-st.title("Car Info App Analytics Dashboard")
+st.title("📊 Beauty Kult App Analytics Dashboard")
 
 # KPI Cards with Competitive Benchmark
-col1, col2, col3, col4,col5 = st.columns(5)
-with col2:
+col1, col2, col3, col4, col5 = st.columns(5)
+with col1:
     avg_rating = filtered_df['Rating'].mean()
-    st.metric("Average Rating", f"{avg_rating:.1f}")
+    st.metric("Average Rating", f"{avg_rating:.1f} ★")
+
+with col2:
+    industry_avg = 4.2
+    st.metric("vs Industry Avg", f"{industry_avg:.1f} ★", 
+              delta=f"{avg_rating - industry_avg:.1f}★", 
+              delta_color="inverse")
 
 with col3:
     response_rate = filtered_df['Reply'].apply(lambda x: x != "No Reply").mean() * 100
     st.metric("Reply to Review Rate", f"{response_rate:.1f}%")
 
-with col1:
+with col4:
     total_reviews = len(filtered_df)
     st.metric("Total Reviews", f"{total_reviews:,}")
 
-with col4:
+with col5:
     pos_percent = (filtered_df['Sentiment'] == 'Positive').mean() * 100
     st.metric("Positive Sentiment", f"{pos_percent:.1f}%")
-with col5:
-    neg_percent = (filtered_df['Sentiment'] == 'Negative').mean() * 100
-    st.metric("Negative Sentiment", f"{neg_percent:.1f}%")
 
 # Tabs with New Strategy Tab
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-    ["Trends", "Reviews", "Insights", "Issues", "Report", "Strategy"]
+    ["📈 Trends", "📝 Reviews", "🧠 Insights", "🔍 Issues", "📊 Report", "🚀 Strategy"]
 )
 
 with tab1:
-    st.header("Trends Over Time")
+    st.header("📈 Trends Over Time")
     
-    # ---- Rating Trend ----
-    st.subheader("Rating Performance")
+    # Rating Trend
     trend_data = filtered_df.groupby('Month_Year').agg(
         Avg_Rating=('Rating', 'mean'),
         Review_Count=('Rating', 'count')
     ).reset_index()
-
+    
     fig = px.line(trend_data, x='Month_Year', y='Avg_Rating',
-                 labels={'Avg_Rating': 'Average Rating', 'Month_Year': 'Month'},
-                 height=350)
-    # Add to Rating Trend section(// New addition)
-    fig.add_trace(go.Bar(
-        x=trend_data['Month_Year'],
-        y=trend_data['Review_Count'],
-        name='Review Volume',
-        yaxis='y2',
-        marker_color='rgba(100, 150, 200, 0.6)'
-    ))
-
-    fig.update_layout(
-        yaxis2=dict(
-            title='Review Count',
-            overlaying='y',
-            side='right'
-        ),
-        legend=dict(x=1.1)
-    )
-    
-    
+                 title="Average Rating Over Time",
+                 labels={'Avg_Rating': 'Average Rating', 'Month_Year': 'Month'})
     st.plotly_chart(fig, use_container_width=True)
-
-    # ---- Sentiment Analysis ----
-    col1, col2 = st.columns([3, 1])
     
-    with col1:
-        st.subheader("Sentiment Trend")
-        sentiment_trend = filtered_df.groupby('Month_Year')['Sentiment_Score'].mean().reset_index()
-        
-        fig = px.line(
-            sentiment_trend, 
-            x='Month_Year', 
-            y='Sentiment_Score',
-            labels={'Sentiment_Score': 'Average Score'},
-            height=400
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # Sentiment Trend
+    sentiment_trend = filtered_df.groupby('Month_Year')['Sentiment_Score'].mean().reset_index()
+    fig = px.line(sentiment_trend, x='Month_Year', y='Sentiment_Score',
+                 title="Sentiment Trend Over Time",
+                 labels={'Sentiment_Score': 'Average Sentiment Score'})
+    st.plotly_chart(fig, use_container_width=True)
     
-    with col2:
-        st.subheader("Sentiment Distribution")
-        
-        # Create cohorts and counts
-        bins = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1]
-        labels = [
-            'Extreme Neg', 'Strong Neg', 'Moderate Neg', 'Mild Neg',
-            'Neutral', 'Mild Pos', 'Moderate Pos', 'Strong Pos'
-        ]
-        filtered_df['Cohort'] = pd.cut(filtered_df['Sentiment_Score'], bins=bins, labels=labels)
-        cohort_counts = filtered_df['Cohort'].value_counts().sort_index()
-        max_count = cohort_counts.max()  # For color normalization
-
-        # Create count-colored visualization
-        fig, ax = plt.subplots(figsize=(2.5, 4))
-        cmap = plt.cm.get_cmap('viridis', 256)  # Color range
-        
-        for i, (cohort, count) in enumerate(cohort_counts.items()):
-            # Color intensity based on count percentage
-            color_intensity = count / max_count  
-            ax.barh(
-                [i], 
-                [1], 
-                color=cmap(color_intensity), 
-                height=0.7,
-                edgecolor='white'
-            )
-            ax.text(
-                0.5, i, f"{count}",
-                ha='center', 
-                va='center', 
-                color='white' if color_intensity > 0.5 else 'black',
-                fontsize=8,
-                fontdict={'weight': 'bold'}
-                
-            )
-
-        # Formatting
-        ax.set_yticks(range(len(cohort_counts)))
-        ax.set_yticklabels(cohort_counts.index, fontsize=9)
-        ax.set_xticks([])
-        
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-            
-        plt.tight_layout()
-        st.pyplot(fig)
-
     # Review Volume by Weekday
     weekday_counts = filtered_df['Weekday'].value_counts().reindex([
         'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -556,247 +442,6 @@ with tab1:
                 title="Review Volume by Day of Week",
                 labels={'value': 'Number of Reviews', 'index': 'Day of Week'})
     st.plotly_chart(fig, use_container_width=True)
-
-    # Sample(Test Additional Graphs)
-
-    st.subheader("Metric Relationships")
-    corr_matrix = filtered_df[['Rating', 'Sentiment_Score', 'Reply_Time_Days']].corr()
-    fig = ff.create_annotated_heatmap(
-        z=corr_matrix.values,
-        x=list(corr_matrix.columns),
-        y=list(corr_matrix.index),
-        colorscale='Blues'
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-    # Aggregate all issue types and replace 0% with NaN
-    issues_trend = filtered_df.groupby('Month_Year').agg({
-        'UI_Issue': lambda x: x.mean() if x.sum() > 0 else np.nan,
-        'Performance_Issue': lambda x: x.mean() if x.sum() > 0 else np.nan,
-        'Support_Complaint': lambda x: x.mean() if x.sum() > 0 else np.nan,
-        'Feature_Request': lambda x: x.mean() if x.sum() > 0 else np.nan
-    }).reset_index()
-
-    # Emerging Issues Timeline Section
-    st.subheader("Emerging Issues Timeline")
-
-    # Aggregate all issue types and filter zeros
-    issues_trend = filtered_df.groupby('Month_Year').agg({
-        'UI_Issue': 'mean',
-        'Performance_Issue': 'mean',
-        'Support_Complaint': 'mean',
-        'Feature_Request': 'mean'
-    }).replace(0, np.nan).reset_index()
-
-    # Melt for plotting and clean data
-    melted_issues = issues_trend.melt(
-        id_vars='Month_Year', 
-        var_name='Issue_Type', 
-        value_name='Frequency'
-    ).dropna(subset=['Frequency'])
-
-    # Create formatted labels
-    issue_labels = {
-        'UI_Issue': 'UI/UX Issues',
-        'Performance_Issue': 'Performance Issues',
-        'Support_Complaint': 'Support Complaints',
-        'Feature_Request': 'Feature Requests'
-    }
-
-    # Create the plot
-    fig = px.line(
-        melted_issues,
-        x='Month_Year',
-        y='Frequency',
-        color='Issue_Type',
-        labels={'Frequency': 'Percentage of Reviews', 'Issue_Type': 'Issue Type'},
-        title="Monthly Issue Frequency Trends",
-        category_orders={"Issue_Type": list(issue_labels.keys())},
-        line_shape='linear'
-    )
-
-    # Formatting improvements
-    fig.update_layout(
-        yaxis_tickformat=".0%",
-        legend_title_text=None,
-        hovermode="x unified",
-        yaxis_range=[0, melted_issues['Frequency'].max() * 1.1]
-    )
-
-    # Custom styling
-    colors = px.colors.qualitative.Plotly
-    for i, trace in enumerate(fig.data):
-        trace.update(
-            line=dict(width=2.5),
-            mode='lines+markers',
-            marker=dict(size=6),
-            name=issue_labels[trace.name],
-            hovertemplate="%{y:.1%}",
-            connectgaps=False
-        )
-        if i < len(colors):
-            trace.update(line_color=colors[i])
-
-    st.plotly_chart(fig, use_container_width=True)
-
-        # Issue Summary Analysis
-    st.subheader("Issue Summary Analysis")
-
-    # Define columns to analyze
-    issue_columns = ['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request']
-
-    # Create summary dataframe and filter zeros
-    issue_summary = pd.DataFrame({
-        'Total Reports': filtered_df[issue_columns].sum(),
-        '% of Total Reviews': filtered_df[issue_columns].mean() * 100
-    }).reset_index().rename(columns={'index': 'Issue Type'})
-
-    # Filter out issues with zero reports and format
-    issue_summary = (
-        issue_summary
-        .query("`Total Reports` > 0")  # Remove zero-count issues
-        .assign(
-            **{'Issue Type': lambda x: x['Issue Type'].map(issue_labels)},
-            **{'% of Total Reviews': lambda x: x['% of Total Reviews'].round(1)}
-        )
-    )
-
-    # Only show if there's data to display
-    if not issue_summary.empty:
-        st.dataframe(
-            issue_summary.style
-            .background_gradient(subset=['Total Reports'], cmap='Reds')
-            .background_gradient(subset=['% of Total Reviews'], cmap='Blues')
-            .format({'Total Reports': '{:,}', '% of Total Reviews': '{:.1f}%'}),
-            height=400,
-            column_config={
-                "Issue Type": st.column_config.TextColumn(width="medium"),
-                "Total Reports": st.column_config.NumberColumn(
-                    help="Total number of reviews mentioning this issue"
-                ),
-                "% of Total Reviews": st.column_config.NumberColumn(
-                    format="%.1f%%",
-                    help="Percentage of all reviews mentioning this issue"
-                )
-            }
-        )
-    else:
-        st.info("No significant issues found in the selected timeframe")
-
-    st.subheader("Review Type Composition")
-
-    # Create review type classification
-    review_types = filtered_df.assign(
-        Type=np.select(
-            condlist=[
-                filtered_df['Feature_Request'],  # First condition: Feature requests
-                filtered_df['Support_Complaint']  # Second condition: Support complaints
-            ],
-            choicelist=[
-                'Feature Request',
-                'Support Issue'
-            ],
-            default=np.where(
-                filtered_df['Rating'] > 3,
-                'Positive Feedback',
-                'General Complaint'
-            )
-        )
-    )
-
-    # Calculate monthly distribution
-    type_distribution = (review_types
-                        .groupby('Month_Year')['Type']
-                        .value_counts(normalize=True)
-                        .unstack()
-                        .fillna(0)
-                        .sort_index())
-
-    # Format for plotting
-    type_distribution = type_distribution[['Feature Request', 'Support Issue', 
-                                        'General Complaint', 'Positive Feedback']]
-
-    # Create visualization
-    fig = px.area(
-        type_distribution,
-        title="Review Type Distribution Over Time",
-        labels={'value': 'Percentage', 'variable': 'Review Type'},
-        color_discrete_map={
-            'Feature Request': '#4C78A8',
-            'Support Issue': '#E45756',
-            'General Complaint': '#F58518',
-            'Positive Feedback': '#54A24B'
-        }
-    )
-
-    # Format axes
-    fig.update_layout(
-        xaxis_title='Month',
-        yaxis=dict(tickformat=".0%"),
-        hovermode='x unified'
-    )
-
-    # Add helpful annotations
-    max_month = type_distribution.index[-1]
-    if 'General Complaint' in type_distribution.columns:
-        latest_complaints = type_distribution.loc[max_month, 'General Complaint']
-        if latest_complaints > 0.3:
-            fig.add_annotation(
-                x=max_month,
-                y=latest_complaints,
-                text="High Complaints!",
-                showarrow=True,
-                arrowhead=1,
-                ax=-50,
-                ay=-30
-            )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
-    st.subheader("Review Type Composition")
-
-    # Create review type categories
-    conditions = [
-        filtered_df['UI_Issue'],  # Feature requests
-        filtered_df['Rating'] > 3,       # Positive feedback
-        filtered_df['Rating'] <= 3       # Complaints
-    ]
-
-    choices = [
-        'UI Isuue',
-        'Positive Feedback', 
-        'Complaint'
-    ]
-
-    # Create review type column
-    review_df = filtered_df.assign(
-        Type=np.select(conditions, choices, default='Other')
-    )
-
-    # Aggregate data by month and type
-    type_counts = (review_df.groupby(['Month_Year', 'Type'])
-                .size()
-                .unstack(fill_value=0)
-                .div(review_df.groupby('Month_Year').size(), axis=0)
-                .reset_index()
-                .melt(id_vars='Month_Year', var_name='Type', value_name='Percentage'))
-
-    # Create visualization
-    fig = px.area(type_counts, 
-                x='Month_Year', 
-                y='Percentage',
-                color='Type',
-                title="Review Type Distribution Over Time",
-                labels={'Percentage': 'Proportion of Reviews'},
-                category_orders={"Type": ["Feature Request", "Positive Feedback", "Complaint", "Other"]})
-
-    fig.update_layout(yaxis_tickformat=".0%")
-    st.plotly_chart(fig, use_container_width=True)
-
-
-
 
 with tab2:
     st.header("📝 Review Analysis")
@@ -864,7 +509,7 @@ with tab2:
         st.warning("No reviews available for word cloud")
     
     # Top Complaint Analysis
-    st.subheader("Top 10 Complaint Analysis")
+    st.subheader("🔍 Top Complaint Analysis")
     negative_reviews = filtered_df[filtered_df['Sentiment'] == 'Negative']['Review']
     
     if len(negative_reviews) > 0:
@@ -890,8 +535,7 @@ with tab2:
         for issue, _ in top_issues[:5]:
             affected = filtered_df[filtered_df['Review'].str.contains(issue, case=False)]
             if len(affected) > 0:
-                non_affected = filtered_df[~filtered_df['Review'].str.contains(issue, case=False)]
-                impact = non_affected['Rating'].mean() - affected['Rating'].mean()
+                impact = filtered_df['Rating'].mean() - affected['Rating'].mean()
                 issue_impact.append({
                     'Issue': issue,
                     'Affected Reviews': len(affected),
@@ -900,8 +544,6 @@ with tab2:
         
         if issue_impact:
             impact_df = pd.DataFrame(issue_impact)
-    
-            # Display impact summary
             st.dataframe(impact_df.sort_values('Rating Impact', ascending=False),
                         height=200,
                         column_config={
@@ -910,86 +552,11 @@ with tab2:
                                 help="How much this issue lowers ratings"
                             )
                         })
-            
-            # Add review explorer for each issue
-            st.subheader("Review Samples for Each Issue")
-            
-            for _, row in impact_df.iterrows():
-                with st.expander(f"View reviews mentioning '{row['Issue']}'", expanded=False):
-                    # Get affected reviews
-                    affected_reviews = filtered_df[
-                        filtered_df['Review'].str.contains(row['Issue'], case=False)
-                    ][['Date', 'Rating', 'Review']]
-                    
-                    # Add filters
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        sample_size = st.slider(
-                            "Number of reviews to show",
-                            min_value=1,
-                            max_value=len(affected_reviews),
-                            value=min(5, len(affected_reviews)),
-                            key=f"sample_{row['Issue']}"
-                        )
-                    with col2:
-                        search_term = st.text_input(
-                            "Search within reviews",
-                            key=f"search_{row['Issue']}"
-                        )
-                    
-                    # Filter and display
-                    filtered = affected_reviews.copy()
-                    if search_term:
-                        filtered = filtered[filtered['Review'].str.contains(search_term, case=False)]
-                    
-                    # Display in scrollable container
-                    with st.container(height=300):
-                        for _, review in filtered.head(sample_size).iterrows():
-                            st.markdown(f"""
-                            <div style='padding:10px; margin:5px 0; border-radius:5px; 
-                                        background:#f8f9fa; border-left:4px solid #6e48aa'>
-                                <div style='font-size:0.9em; color:#666; margin-bottom:5px'>
-                                    {review['Date'].strftime('%b %d, %Y')} | ⭐ {review['Rating']}
-                                </div>
-                                {review['Review']}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        if filtered.empty:
-                            st.info("No reviews match the search criteria")
-
-
-    st.subheader("6-Month Rating Forecast")
-    
-    if not filtered_df.empty:
-        forecast_fig = generate_forecast(filtered_df)
-        
-        if forecast_fig:
-            # CORRECT: Use plotly_chart instead of pyplot
-            st.plotly_chart(forecast_fig, use_container_width=True)
-        else:
-            st.warning("Forecast unavailable with current filters")
     else:
-        st.warning("No data available for forecasting")
-    
-    st.subheader("Review Investigation Toolkit")
-    search_query = st.text_input("🔍 Search across all reviews")
-    if search_query:
-        matches = filtered_df[filtered_df['Review'].str.contains(search_query, case=False)]
-        st.write(f"Found {len(matches)} reviews containing '{search_query}'")
-        
-        with st.expander("View matching reviews"):
-            for _, row in matches.iterrows():
-                st.markdown(f"""
-                <div style="padding:10px; margin:5px 0; background:#f8f9fa; border-radius:5px">
-                    ⭐ {row['Rating']} | {row['Date'].strftime('%Y-%m-%d')}
-                    <div style="color:#666">{row['Review']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
+        st.success("No negative reviews found in current filters!")
 
 with tab3:
-    st.header("Insights & Recommendations")
+    st.header("🧠 Insights & Recommendations")
     
     # Sentiment Analysis
     st.subheader("Sentiment Distribution")
@@ -1038,196 +605,20 @@ with tab3:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Not enough negative reviews for issues analysis")
-
-    st.subheader("🔄 Issue Prioritization Matrix")
-    issue_matrix = filtered_df.melt(
-        value_vars=['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request'],
-        var_name='Issue',
-        value_name='Reported'
-    ).groupby('Issue')['Reported'].agg(['mean', 'sum']).reset_index()
-
-    issue_matrix['Impact'] = [
-        filtered_df.groupby(col)['Rating'].mean().diff().iloc[-1]
-        for col in issue_matrix['Issue']
-    ]
-
-    fig = px.scatter(
-        issue_matrix,
-        x='mean',
-        y='Impact',
-        size='sum',
-        color='Issue',
-        hover_name='Issue',
-        labels={'mean': 'Frequency (%)', 'sum': 'Total Reports'},
-        title="Focus Resources Where Lines Intersect"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Most Controversial Reviews")
-    filtered_df['Sentiment_Rating_Gap'] = abs(filtered_df['Sentiment_Score'] - filtered_df['Rating']/5)
-    controversial = filtered_df.nlargest(5, 'Sentiment_Rating_Gap')
-
-    for _, row in controversial.iterrows():
-        with st.expander(f"⭐ {row['Rating']} | Sentiment: {row['Sentiment']}", expanded=False):
-            st.markdown(f"""
-            **Why it's controversial:**  
-            {row['Review']}
-            
-            *Sentiment score: {row['Sentiment_Score']:.2f} | Calculated gap: {row['Sentiment_Rating_Gap']:.2f}*
-            """)
     
-
-
+    # Device Analysis
+    st.subheader("Device Distribution")
+    device_counts = filtered_df['Devices_Mentioned'].value_counts().head(10)
+    if not device_counts.empty:
+        fig = px.bar(device_counts, orientation='h',
+                    title="Top 10 Mentioned Devices",
+                    labels={'value': 'Count', 'index': 'Device'})
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No device data available")
 
 with tab4:
     st.header("🔍 Comprehensive Issues Analysis")
-        # Define issue configurations
-
-    ISSUE_CONFIG = {
-        'ui_issue': {
-            'column': 'UI_Issue',
-            'title': 'UI/UX Issues',
-            'color': '#6e48aa',
-            'keywords': ['slow', 'lag', 'bug', 'glitch']
-        },
-        'performance_issue': {
-            'column': 'Performance_Issue',
-            'title': 'Performance Issues',
-            'color': '#dc3545',
-            'keywords': ['crash', 'freeze', 'lag']
-        },
-        'feature_request': {
-            'column': 'Feature_Request',
-            'title': 'Feature Requests',
-            'color': '#17a2b8',
-            'keywords': ['should have', 'need', 'want']
-        },
-        'support_complaint': {
-            'column': 'Support_Complaint',
-            'title': 'Support Issues',
-            'color': '#fd7e14',
-            'keywords': ['rude', 'slow response', 'unhelpful']
-        },
-        'pricing_complaint': {
-            'column': 'Pricing_Complaint',
-            'title': 'Pricing Issues',
-            'color': '#28a745',
-            'keywords': ['expensive', 'overpriced', 'cost']
-        }
-    }
-
-    # Unified Issues Analysis Section
-    with st.expander("🔍 Unified Issue Analysis", expanded=True):
-        # Issue Selection
-        selected_issue = st.selectbox(
-            "Select Issue Type:",
-            options=list(ISSUE_CONFIG.keys()),
-            format_func=lambda x: ISSUE_CONFIG[x]['title']
-        )
-        
-        config = ISSUE_CONFIG[selected_issue]
-        issue_col = config['column']
-        
-        # Metrics Columns
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_issues = filtered_df[issue_col].sum()
-            st.metric(f"Total {config['title']}", total_issues)
-        
-        with col2:
-            negative_pct = filtered_df[filtered_df['Sentiment'] == 'Negative'][issue_col].mean() * 100
-            st.metric("In Negative Reviews", f"{negative_pct:.1f}%")
-        
-        with col3:
-            impact = filtered_df.groupby(issue_col)['Rating'].mean().diff().iloc[-1]
-            st.metric("Rating Impact", f"{impact:.1f}★", delta_color="inverse")
-
-        # Common Visualizations
-        tab1, tab2, tab3 = st.tabs(["Trend Analysis", "Term Cloud", "Deep Dive"])
-        
-        with tab1:
-            # Trend Chart
-            trend_data = filtered_df.groupby('Month_Year')[issue_col].mean().reset_index()
-            fig_trend = px.line(
-                trend_data,
-                x='Month_Year',
-                y=issue_col,
-                title=f"{config['title']} Trend Over Time",
-                labels={issue_col: '% of Reviews', 'Month_Year': 'Month'},
-                color_discrete_sequence=[config['color']]
-            )
-            st.plotly_chart(fig_trend, use_container_width=True, key=f"trend_{selected_issue}")
-        
-        with tab2:
-            # Word Cloud
-            issue_reviews = " ".join(filtered_df[filtered_df[issue_col]]['Review'])
-            if issue_reviews.strip():
-                wordcloud = WordCloud(width=800, height=300, background_color='white').generate(issue_reviews)
-                plt.figure(figsize=(10, 5))
-                plt.imshow(wordcloud, interpolation='bilinear')
-                plt.axis("off")
-                plt.title(f"Common Terms in {config['title']}", pad=20)
-                st.pyplot(plt, clear_figure=True)
-            else:
-                st.warning(f"No reviews found for {config['title']}")
-        
-        with tab3:
-            # Specialized Visuals
-            if selected_issue == 'feature_request':
-                vectorizer = TfidfVectorizer(ngram_range=(2, 3), stop_words='english', max_features=50)
-                X = vectorizer.fit_transform(filtered_df[filtered_df[issue_col]]['Review'])
-                features = pd.DataFrame({
-                    'Feature': vectorizer.get_feature_names_out(),
-                    'Score': X.sum(axis=0).A1
-                }).sort_values('Score', ascending=False).head(10)
-                
-                fig_features = px.bar(features, x='Score', y='Feature', orientation='h',
-                                    title="Top Requested Features", color='Score',
-                                    color_continuous_scale='blues')
-                st.plotly_chart(fig_features, use_container_width=True, key=f"features_{selected_issue}")
-            
-            elif selected_issue == 'support_complaint':
-                if 'Support_Complaint_Type' in filtered_df.columns:
-                    supp_types = filtered_df['Support_Complaint_Type'].value_counts()
-                    fig_support = px.pie(supp_types, values=supp_types.values, names=supp_types.index,
-                                        title="Support Complaint Types")
-                    st.plotly_chart(fig_support, use_container_width=True, key=f"support_{selected_issue}")
-            
-            elif selected_issue == 'pricing_complaint':
-                fig_pricing = px.box(filtered_df[filtered_df[issue_col]], 
-                                    y='Rating', 
-                                    title="Rating Distribution for Pricing Complaints",
-                                    color_discrete_sequence=[config['color']])
-                st.plotly_chart(fig_pricing, use_container_width=True, key=f"pricing_{selected_issue}")
-            
-            else:
-                # Default correlation analysis
-                corr_data = filtered_df[[issue_col, 'Rating']].corr()
-                fig_corr = ff.create_annotated_heatmap(
-                    z=corr_data.values,
-                    x=corr_data.columns.tolist(),
-                    y=corr_data.index.tolist(),
-                    colorscale='Blues'
-                )
-                st.plotly_chart(fig_corr, use_container_width=True, key=f"correlation_{selected_issue}")
-
-        # Additional Metrics
-        st.subheader("Impact Analysis")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Response rate impact
-            if 'Reply' in filtered_df:
-                responded_rate = filtered_df[filtered_df['Reply'] != "No Reply"][issue_col].mean()
-                st.metric("Response Rate for Issue", f"{responded_rate:.1%}")
-        
-        with col2:
-            # Device distribution
-            device_dist = filtered_df[filtered_df[issue_col]]['Devices_Mentioned'].value_counts().head(5)
-            if not device_dist.empty:
-                fig_device = px.pie(device_dist, values=device_dist.values, names=device_dist.index,
-                                    title="Top Affected Devices")
-                st.plotly_chart(fig_device, use_container_width=True, key=f"device_{selected_issue}")    
     
     # UI/UX Issues
     with st.expander("🎨 UI/UX Issues", expanded=True):
@@ -1447,7 +838,7 @@ with tab5:
     st.subheader("Key Performance Indicators")
     
     # Create a metrics grid
-    col1, col2, col3, col4,col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Average Rating", f"{filtered_df['Rating'].mean():.1f} ★", 
                  help="Overall average star rating from users")
@@ -1460,9 +851,6 @@ with tab5:
     with col4:
         st.metric("Active Issues", f"{filtered_df[['UI_Issue', 'Performance_Issue']].any(axis=1).sum()}",
                  help="Total reviews reporting UI or performance issues")
-    with col5:
-        st.metric("Negative Sentiment", f"{(filtered_df['Sentiment'] == 'Negative').mean()*100:.1f}%",
-                 help="Percentage of reviews with negative sentiment")
     
     st.divider()
     
@@ -1585,24 +973,6 @@ with tab5:
                 st.metric("Slowest Response", f"{response_stats['max']:.1f} days")
             else:
                 st.warning("No response time data available")
-
-    def generate_exec_summary(df):
-        summary = f"""
-        **Period Analyzed:** {df['Date'].min().strftime('%b %Y')} - {df['Date'].max().strftime('%b %Y')}
-        
-        **Key Achievements:**
-        - {df[df['Rating'] >= 4].shape[0]} positive experiences reported
-        - {df[df['Reply'] != 'No Reply'].shape[0]} user engagements handled
-        - Top performing month: {df.groupby('Month_Year')['Rating'].mean().idxmax()}
-        
-        **Critical Focus Areas:**
-        - {df[df['Rating'] <= 2].shape[0]} urgent complaints needing resolution
-        - {df['UI_Issue'].sum()} reported usability barriers
-        - {df['Performance_Issue'].sum()} technical instability reports
-        """
-        return summary
-
-    st.markdown(generate_exec_summary(filtered_df), unsafe_allow_html=True)
     
     # Final Summary
     st.divider()
@@ -1611,7 +981,6 @@ with tab5:
     # Generate dynamic summary based on data
     avg_rating = filtered_df['Rating'].mean()
     pos_sentiment = (filtered_df['Sentiment'] == 'Positive').mean()
-    neg_sentiment = (filtered_df['Sentiment'] == 'Negative').mean()
     issue_rate = filtered_df[['UI_Issue', 'Performance_Issue']].any(axis=1).mean()
     
     if avg_rating >= 4:
@@ -1630,7 +999,6 @@ with tab5:
     <ul>
         <li>Average Rating: <b>{avg_rating:.1f}/5</b> stars</li>
         <li>Positive Sentiment: <b>{pos_sentiment:.1%}</b> of reviews</li>
-        <li>Negative Sentiment: <b>{neg_sentiment:.1%}</b> of reviews</li>
         <li>Issue Reporting Rate: <b>{issue_rate:.1%}</b> of reviews mention problems</li>
         <li>Response Coverage: <b>{response_coverage:.1f}%</b> of reviews receive replies</li>
     </ul>
@@ -1645,7 +1013,7 @@ with tab5:
         st.download_button(
             label="📥 Download Full Report",
             data=report_data,
-            file_name="Car Info_app_report.pdf",
+            file_name="beauty_kult_app_report.pdf",
             mime="application/pdf"
         )
     else:
@@ -1658,7 +1026,6 @@ with tab6:  # New Strategy tab
     with st.expander("💰 ROI Projections", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            industry_avg=4.2
             st.subheader("Rating Improvement Impact")
             rating_gap = industry_avg - avg_rating
             if rating_gap > 0:
@@ -1683,7 +1050,7 @@ with tab6:  # New Strategy tab
     with st.expander("📊 Competitive Benchmarking", expanded=True):
         # Mock competitor data - in real implementation use actual competitor data
         competitors = {
-            'Car Info': {
+            'Beauty Kult': {
                 'Rating': avg_rating,
                 'Response Rate': response_rate,
                 'Positive Sentiment': pos_percent,
@@ -1735,7 +1102,7 @@ with tab6:  # New Strategy tab
         st.subheader("30-Day Rating Forecast")
         forecast_fig = generate_forecast(filtered_df)
         if forecast_fig:
-            st.plotly_chart(forecast_fig, use_container_width=True)  
+            st.pyplot(forecast_fig)
         else:
             st.warning("Insufficient data for forecasting")
         
@@ -1833,10 +1200,10 @@ st.sidebar.markdown(f"""
 ### About This Dashboard
 
 **Purpose:**  
-Comprehensive analysis of Car Info app reviews to identify improvement opportunities.
+Comprehensive analysis of Beauty Kult app reviews to identify improvement opportunities.
 
 **Data Source:**  
-Google Play Store reviews ({datetime.now().strftime('%Y-%m-%d')})
+Google Play Store reviews (updated {datetime.now().strftime('%Y-%m-%d')})
 
 **Key Metrics Tracked:**  
 - UI/UX Issues  
@@ -1881,7 +1248,7 @@ if 'Feature_Request' in filtered_df.columns:
         top_request = filtered_df[filtered_df['Feature_Request']]['Review'].value_counts().index[0][:100]
         st.markdown(f"""
         <div class="info-box">
-            <h4>Opportunity: {feature_request_count} feature requests detected!</h4>
+            <h4>💡 Opportunity: {feature_request_count} feature requests detected!</h4>
             <p>Most requested: "{top_request}..."</p>
         </div>
         """, unsafe_allow_html=True)
