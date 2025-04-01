@@ -428,19 +428,48 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
     
     # Sentiment Trend
+    # Sentiment Trend with Red Color
     sentiment_trend = filtered_df.groupby('Month_Year')['Sentiment_Score'].mean().reset_index()
     fig = px.line(sentiment_trend, x='Month_Year', y='Sentiment_Score',
-                 title="Sentiment Trend Over Time",
-                 labels={'Sentiment_Score': 'Average Sentiment Score'})
+                title="<b>Sentiment Trend Over Time</b>",
+                labels={'Sentiment_Score': 'Average Sentiment Score'},
+                color_discrete_sequence=['#CB2726'])  # Red color code
+
+    fig.update_traces(line=dict(width=2.5),
+                    mode='lines',
+                    marker=dict(size=8))
+                    
+    fig.update_layout(
+        plot_bgcolor='rgba(255,255,255,0.8)',
+        xaxis_title='<b>Month/Year</b>',
+        yaxis_title='<b>Average Sentiment Score</b>',
+        title_font=dict(size=20, color='#2C3E50')
+    )
+
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Review Volume by Weekday
+
+    # Review Volume by Weekday with Red Theme
     weekday_counts = filtered_df['Weekday'].value_counts().reindex([
         'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
     ])
+
     fig = px.bar(weekday_counts, 
-                title="Review Volume by Day of Week",
-                labels={'value': 'Number of Reviews', 'index': 'Day of Week'})
+                title="<b>Review Volume by Day of Week</b>",
+                labels={'value': 'Number of Reviews', 'index': 'Day of Week'},
+                color_discrete_sequence=['#FF6B6B'],  # Complementary red shade
+                opacity=0.8)
+
+    fig.update_traces(marker_line_color='#C44D58',  # Darker red border
+                    marker_line_width=1.5,
+                    hovertemplate='<b>%{x}</b><br>%{y} reviews')
+
+    fig.update_layout(
+        uniformtext_minsize=12,
+        uniformtext_mode='hide',
+        xaxis=dict(tickfont=dict(color='#2C3E50')),
+        yaxis=dict(showgrid=True, gridcolor='#EDEDED')
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
 with tab2:

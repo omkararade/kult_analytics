@@ -455,35 +455,24 @@ with tab1:
     
     # ---- Rating Trend ----
     st.subheader("Rating Performance")
+
     trend_data = filtered_df.groupby('Month_Year').agg(
-        Avg_Rating=('Rating', 'mean'),
-        Review_Count=('Rating', 'count')
+        Avg_Rating=('Rating', 'mean')
     ).reset_index()
 
     fig = px.line(trend_data, x='Month_Year', y='Avg_Rating',
-                 labels={'Avg_Rating': 'Average Rating', 'Month_Year': 'Month'},
-                 height=350)
-    # Add to Rating Trend section(// New addition)
-    fig.add_trace(go.Bar(
-        x=trend_data['Month_Year'],
-        y=trend_data['Review_Count'],
-        name='Review Volume',
-        yaxis='y2',
-        marker_color='rgba(100, 150, 200, 0.6)'
-    ))
+                labels={'Avg_Rating': 'Average Rating', 'Month_Year': 'Month'},
+                height=350,
+                line_shape='linear')
+
+    # Change line color to light red
+    fig.update_traces(line=dict(color='#CB2726'))
 
     fig.update_layout(
-        yaxis2=dict(
-            title='Review Count',
-            overlaying='y',
-            side='right'
-        ),
         legend=dict(x=1.1)
     )
-    
-    
-    st.plotly_chart(fig, use_container_width=True)
 
+    st.plotly_chart(fig, use_container_width=True)
     # ---- Sentiment Analysis ----
     col1, col2 = st.columns([3, 1])
     
@@ -498,6 +487,7 @@ with tab1:
             labels={'Sentiment_Score': 'Average Score'},
             height=400
         )
+        fig.update_traces(line=dict(color='rgba(255, 99, 132, 0.8)'))
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -547,6 +537,8 @@ with tab1:
             
         plt.tight_layout()
         st.pyplot(fig)
+
+
 
     # Review Volume by Weekday
     weekday_counts = filtered_df['Weekday'].value_counts().reindex([
@@ -863,6 +855,100 @@ with tab2:
     else:
         st.warning("No reviews available for word cloud")
     
+    st.subheader("Review Word Cloud")
+    text = " ".join(review for review in filtered_df['Review'])
+
+    if text.strip():
+        # Generate Word Cloud with more styling options
+        wordcloud = WordCloud(
+            width=1200,
+            height=600,
+            background_color='white',
+            colormap='viridis',
+            max_words=200,
+            contour_width=1,
+            contour_color='steelblue'
+        ).generate(text)
+
+        # Display directly using Streamlit without matplotlib
+        st.image(
+            wordcloud.to_array(),
+            caption="Most Frequent Words in Reviews",
+            use_column_width=True
+        )
+        
+        # Add customization options in an expander
+        with st.expander("Word Cloud Info"):
+            st.markdown("""
+            - Larger words indicate higher frequency
+            - Color spectrum shows word diversity
+            - Hover/click to see full-size image
+            """)
+            st.download_button(
+                label="Download Word Cloud",
+                data=wordcloud.to_image().tobytes(),
+                file_name="word_cloud.png",
+                mime="image/png"
+            )
+    else:
+        st.warning("No reviews available to generate word cloud")
+    from PIL import Image
+
+    st.subheader("Car-Shaped Word Cloud")
+    text = " ".join(review for review in filtered_df['Review'])
+
+    if text.strip():
+        # Load car silhouette mask (replace with your own car PNG path)
+        car_mask = np.array(Image.open("image/Screenshot 2025-04-02 at 1.00.01 AM.png"))  # White background, black car shape
+        
+        # Create red color function with metallic effect
+        def car_color_func(word, font_size, position, orientation, **kwargs):
+            reds = ['#FFB3BA', '#FF9999', '#FF6666', '#FF4444', '#D32F2F']
+            return np.random.choice(reds)
+
+        # Generate word cloud
+        wordcloud = WordCloud(
+            width=1000,
+            height=600,
+            mask=car_mask,
+            background_color='white',
+            contour_width=2,
+            contour_color='#FF4444',
+            color_func=car_color_func,
+            max_words=200,
+            relative_scaling=0.3,
+            prefer_horizontal=0.7
+        ).generate(text)
+
+        # Display with styling
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.image(
+                wordcloud.to_array(),
+                caption="Car-Shaped Review Analysis",
+                use_column_width=True
+            )
+        
+        with col2:
+            st.markdown("""
+                **Design Features**
+                - Modern car silhouette shape
+                - Metallic red color palette
+                - Chrome-accented contours
+                - Aerodynamic text flow
+                """)
+            
+            # Upload alternative car shapes
+            custom_mask = st.file_uploader("Upload your own car silhouette", 
+                                        type=['png', 'jpg'])
+            st.download_button("Download Car Word Cloud", 
+                            wordcloud.to_image().tobytes(),
+                            "car_wordcloud.png")
+
+    else:
+        st.warning("No reviews available for visualization")
+
+    
     # Top Complaint Analysis
     st.subheader("Top 10 Complaint Analysis")
     negative_reviews = filtered_df[filtered_df['Sentiment'] == 'Negative']['Review']
@@ -887,7 +973,8 @@ with tab2:
         # Show impact on rating
         st.subheader("Issue Impact on Ratings")
         issue_impact = []
-        for issue, _ in top_issues[:5]:
+        # Process top 10 issues to ensure we have enough for both categories
+        for issue, _ in top_issues[:10]:  # Changed from 5 to 10
             affected = filtered_df[filtered_df['Review'].str.contains(issue, case=False)]
             if len(affected) > 0:
                 non_affected = filtered_df[~filtered_df['Review'].str.contains(issue, case=False)]
@@ -897,20 +984,47 @@ with tab2:
                     'Affected Reviews': len(affected),
                     'Rating Impact': impact
                 })
-        
+
         if issue_impact:
             impact_df = pd.DataFrame(issue_impact)
-    
-            # Display impact summary
-            st.dataframe(impact_df.sort_values('Rating Impact', ascending=False),
-                        height=200,
-                        column_config={
-                            "Rating Impact": st.column_config.NumberColumn(
-                                format="%.2f ★",
-                                help="How much this issue lowers ratings"
-                            )
-                        })
             
+            # Split into negative and positive impacts
+            negative_impact_df = impact_df[impact_df['Rating Impact'] > 0]\
+                .sort_values('Rating Impact', ascending=False).head(5)
+            
+            positive_impact_df = impact_df[impact_df['Rating Impact'] < 0]\
+                .sort_values('Rating Impact', ascending=True).head(5)
+
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.subheader("Top Negative Impacts")
+                st.dataframe(
+                    negative_impact_df,
+                    column_config={
+                        "Rating Impact": st.column_config.NumberColumn(
+                            format="▼ %.2f",
+                            help="How much ratings decrease when this issue is mentioned"
+                        )
+                    },
+                    height=250,
+                    hide_index=True
+                )
+            
+            with col2:
+                st.subheader("Top Positive Impacts")
+                st.dataframe(
+                    positive_impact_df,
+                    column_config={
+                        "Rating Impact": st.column_config.NumberColumn(
+                            format="▲ %.2f", 
+                            help="How much ratings increase when this issue is mentioned"
+                        )
+                    },
+                    height=250,
+                    hide_index=True
+                )
             # Add review explorer for each issue
             st.subheader("Review Samples for Each Issue")
             
@@ -1087,32 +1201,44 @@ with tab4:
         'ui_issue': {
             'column': 'UI_Issue',
             'title': 'UI/UX Issues',
-            'color': '#6e48aa',
-            'keywords': ['slow', 'lag', 'bug', 'glitch']
+            'color': '#CB2726',
+            'keywords': ['slow', 'lag', 'bug', 'glitch', 'crash', 'freeze', 'complicated', 'hard', 'navigation','unresponsive','delay','latency','stutter',
+        'load time','resource intensive','memory leak','instability','error','failure','hang','confusing','difficult','intricate','unintuitive','cumbersome',
+        'tedious','user-friendly','accessibility','workflow','steps','process','layout','design','interface','discoverability','pixelated','distorted',
+        'alignment','animation','responsiveness','touch','click','scroll','visual','rendering','display','font','color','data loss','sync','save',
+               'input','output','search','filter','functionality','feature','compatibility','frustrating','annoying','irritating','problem','issue','bad',
+               'poor','broken','useless','disappointing']
         },
         'performance_issue': {
             'column': 'Performance_Issue',
             'title': 'Performance Issues',
-            'color': '#dc3545',
-            'keywords': ['crash', 'freeze', 'lag']
+            'color': '#CB2726',
+            'keywords': ['crash','freeze','lag','slow','bug','glitch','not responding','stuck','hangs',
+    'loading','performance','unstable','error','delay','latency','stutter','load time',
+    'resource intensive','memory leak','instability','failure','unresponsive','rendering','optimization']
         },
         'feature_request': {
             'column': 'Feature_Request',
             'title': 'Feature Requests',
-            'color': '#17a2b8',
+            'color': '#CB2726',
             'keywords': ['should have', 'need', 'want']
         },
         'support_complaint': {
             'column': 'Support_Complaint',
             'title': 'Support Issues',
-            'color': '#fd7e14',
-            'keywords': ['rude', 'slow response', 'unhelpful']
+            'color': '#CB2726',
+            'keywords': {'No Response': ['no reply', 'no answer', 'ignored', 'no help', 'no response', 'never responded', 'no feedback'],
+        'Slow Response': ['slow response', 'took long', 'days to reply', 'delayed response', 'long wait', 'prolonged delay', 'late reply'],
+        'Unhelpful': ['not helpful', 'useless', 'did not solve', 'waste of time', 'ineffective', 'unhelpful', 'did not assist', 'no solution', 'failed to resolve'],
+        'Rude Staff': ['rude', 'arrogant', 'unprofessional', 'angry', 'impolite', 'disrespectful', 'hostile', 'offensive', 'dismissive']
+            }
         },
         'pricing_complaint': {
             'column': 'Pricing_Complaint',
             'title': 'Pricing Issues',
-            'color': '#28a745',
-            'keywords': ['expensive', 'overpriced', 'cost']
+            'color': '#CB2726',
+            'keywords': ['expensive','overpriced','pricey','too much','not worth','high price','cost too much',
+        'unfair','cheaper','lower price','reduce price','price hike','cost','value','affordable']
         }
     }
 
@@ -1162,15 +1288,46 @@ with tab4:
             # Word Cloud
             issue_reviews = " ".join(filtered_df[filtered_df[issue_col]]['Review'])
             if issue_reviews.strip():
-                wordcloud = WordCloud(width=800, height=300, background_color='white').generate(issue_reviews)
-                plt.figure(figsize=(10, 5))
+                # Red theme configuration
+                red_palette = ['#ffcccc', '#ff9999', '#ff6666', '#ff3333', '#ff0000']
+                red_background = '#ffffff'
+
+                # Create WordCloud with red theme
+                wordcloud = WordCloud(
+                    width=1200,
+                    height=600,
+                    background_color=red_background,
+                    colormap='OrRd',
+                    contour_color='#cc0000',
+                    contour_width=2,
+                    max_words=150,
+                    prefer_horizontal=0.8,
+                    color_func=lambda *args, **kwargs: np.random.choice(red_palette)
+                ).generate(issue_reviews)
+
+                # Create figure with title styling
+                plt.figure(figsize=(14, 8))
                 plt.imshow(wordcloud, interpolation='bilinear')
                 plt.axis("off")
-                plt.title(f"Common Terms in {config['title']}", pad=20)
-                st.pyplot(plt, clear_figure=True)
+                
+                # Presentation-style title
+                plt.title(
+                    f"Key Terms in {config['title']}",
+                    fontsize=24,
+                    pad=30,
+                    color='#990000',
+                    fontweight='bold',
+                    fontfamily='sans-serif'
+                )
+                
+                # Streamlit display with centered layout
+                with st.container():
+                    col1, col2, col3 = st.columns([1, 6, 1])
+                    with col2:
+                        st.pyplot(plt, clear_figure=True, bbox_inches='tight')
+                        
             else:
                 st.warning(f"No reviews found for {config['title']}")
-        
         with tab3:
             # Specialized Visuals
             if selected_issue == 'feature_request':
