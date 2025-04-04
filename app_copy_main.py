@@ -445,6 +445,11 @@ with tab1:
         yaxis_title='<b>Average Sentiment Score</b>',
         title_font=dict(size=20, color='#2C3E50')
     )
+    fig.update_layout(
+        xaxis=dict(showgrid=False),  # Remove vertical grid lines
+        yaxis=dict(showgrid=False),  # Remove horizontal grid lines
+        plot_bgcolor='rgba(0,0,0,0)'  # Make background transparent
+    )
 
     st.plotly_chart(fig, use_container_width=True)
 

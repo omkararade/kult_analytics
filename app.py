@@ -372,8 +372,10 @@ def load_data():
     df.loc[df['Subscription_Complaint'], 'Subscription_Issue_Type'] = df[df['Subscription_Complaint']]['Review'].apply(categorize_sub_issue)
     
     request_phrases = [
-        'should have','need','want','please add','where is','why no','missing',
-        'would love','wish there was','suggest','recommend','hope to see'
+    'should have','need','want','please add','where is','why no','missing','would love','wish there was','suggest','recommend',
+    'hope to see','require','desire','looking for','could use','it would be great if','it would be helpful if','is there a way to',
+    'is it possible to','consider adding','Id like to see',
+    'Im trying to find','can you implement','how do I','is it possible to get','is there','Im looking for'
     ]
     df['Feature_Request'] = df['Review'].str.contains('|'.join(request_phrases), case=False, na=False)
     
@@ -467,6 +469,11 @@ with tab1:
 
     # Change line color to light red
     fig.update_traces(line=dict(color='#CB2726'))
+    fig.update_layout(
+        xaxis=dict(showgrid=False),  # Remove vertical grid lines
+        yaxis=dict(showgrid=False),  # Remove horizontal grid lines
+        plot_bgcolor='rgba(0,0,0,0)'  # Make background transparent
+    )
 
     fig.update_layout(
         legend=dict(x=1.1)
@@ -492,7 +499,6 @@ with tab1:
     
     with col2:
         st.subheader("Sentiment Distribution")
-        
         # Create cohorts and counts
         bins = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1]
         labels = [
@@ -501,44 +507,41 @@ with tab1:
         ]
         filtered_df['Cohort'] = pd.cut(filtered_df['Sentiment_Score'], bins=bins, labels=labels)
         cohort_counts = filtered_df['Cohort'].value_counts().sort_index()
-        max_count = cohort_counts.max()  # For color normalization
+        max_count = cohort_counts.max()
 
-        # Create count-colored visualization
-        fig, ax = plt.subplots(figsize=(2.5, 4))
-        cmap = plt.cm.get_cmap('viridis', 256)  # Color range
+        # Rotated visualization
+        fig, ax = plt.subplots(figsize=(4, 2.5))  # Swapped dimensions
+        cmap = plt.cm.get_cmap('viridis', 256)
         
         for i, (cohort, count) in enumerate(cohort_counts.items()):
-            # Color intensity based on count percentage
             color_intensity = count / max_count  
-            ax.barh(
+            ax.bar(
                 [i], 
                 [1], 
                 color=cmap(color_intensity), 
-                height=0.7,
+                width=0.7,  # Changed from height to width
                 edgecolor='white'
             )
             ax.text(
-                0.5, i, f"{count}",
+                i, 0.5, f"{count}",  # Swapped coordinates
                 ha='center', 
                 va='center', 
                 color='white' if color_intensity > 0.5 else 'black',
                 fontsize=8,
-                fontdict={'weight': 'bold'}
-                
+                fontdict={'weight': 'bold'},
+                rotation=90  # Rotate text
             )
 
-        # Formatting
-        ax.set_yticks(range(len(cohort_counts)))
-        ax.set_yticklabels(cohort_counts.index, fontsize=9)
-        ax.set_xticks([])
+        # Adjusted formatting
+        ax.set_xticks(range(len(cohort_counts)))
+        ax.set_xticklabels(cohort_counts.index, fontsize=8, rotation=45, ha='right')
+        ax.set_yticks([])
         
         for spine in ax.spines.values():
             spine.set_visible(False)
             
         plt.tight_layout()
         st.pyplot(fig)
-
-
 
     # Review Volume by Weekday
     weekday_counts = filtered_df['Weekday'].value_counts().reindex([
@@ -787,7 +790,194 @@ with tab1:
     fig.update_layout(yaxis_tickformat=".0%")
     st.plotly_chart(fig, use_container_width=True)
 
+        # ==================================================
+    # Issue Categorization System
+    # ==================================================
 
+    # --------------------------
+    # 1. Define Keyword Libraries
+    # --------------------------
+    UI_KEYWORDS = [
+        'slow', 'lag', 'bug', 'glitch', 'crash', 'freeze', 'complicated', 'hard', 'navigation',
+        'unresponsive', 'delay', 'latency', 'stutter', 'load time', 'resource intensive',
+        'memory leak', 'instability', 'error', 'failure', 'hang', 'confusing', 'difficult',
+        'intricate', 'unintuitive', 'cumbersome', 'tedious', 'user-friendly', 'accessibility',
+        'workflow', 'steps', 'process', 'layout', 'design', 'interface', 'discoverability',
+        'pixelated', 'distorted', 'alignment', 'animation', 'responsiveness', 'touch', 'click',
+        'scroll', 'visual', 'rendering', 'display', 'font', 'color', 'data loss', 'sync', 'save',
+        'input', 'output', 'search', 'filter', 'functionality', 'feature', 'compatibility',
+        'frustrating', 'annoying', 'irritating', 'problem', 'issue', 'bad', 'poor', 'broken',
+        'useless', 'disappointing'
+    ]
+
+    PERFORMANCE_KEYWORDS = [
+        'crash', 'freeze', 'lag', 'slow', 'bug', 'glitch', 'not responding', 'stuck', 'hangs',
+        'loading', 'performance', 'unstable', 'error', 'delay', 'latency', 'stutter', 'load time',
+        'resource intensive', 'memory leak', 'instability', 'failure', 'unresponsive', 'rendering',
+        'optimization'
+    ]
+
+    FEATURE_REQUEST_KEYWORDS = [
+        'should have', 'need', 'want', 'please add', 'where is', 'why no', 'missing', 'would love',
+        'wish there was', 'suggest', 'recommend', 'hope to see', 'require', 'desire', 'looking for',
+        'could use', 'it would be great if', 'it would be helpful if', 'is there a way to',
+        'is it possible to', 'consider adding', 'Id like to see', 'Im trying to find',
+        'can you implement', 'how do I', 'is it possible to get', 'is there', 'Im looking for'
+    ]
+
+    SUPPORT_CATEGORIES = {
+        'No Response': ['no reply', 'no answer', 'ignored', 'no help', 'no response', 
+                    'never responded', 'no feedback'],
+        'Slow Response': ['slow response', 'took long', 'days to reply', 'delayed response',
+                        'long wait', 'prolonged delay', 'late reply'],
+        'Unhelpful': ['not helpful', 'useless', 'did not solve', 'waste of time',
+                    'ineffective', 'unhelpful', 'did not assist', 'no solution',
+                    'failed to resolve'],
+        'Rude Staff': ['rude', 'arrogant', 'unprofessional', 'angry', 'impolite',
+                    'disrespectful', 'hostile', 'offensive', 'dismissive']
+    }
+
+    # --------------------------
+    # 2. Create Issue Flags
+    # --------------------------
+    # UI Issues Detection
+    df['UI_Issue'] = df['Review'].str.contains('|'.join(UI_KEYWORDS), case=False, na=False)
+
+    # Performance Issues Detection
+    df['Performance_Issue'] = df['Review'].str.contains(
+        '|'.join(PERFORMANCE_KEYWORDS), case=False, na=False
+    )
+
+    # Feature Requests Detection
+    df['Feature_Request'] = df['Review'].str.contains(
+        '|'.join(FEATURE_REQUEST_KEYWORDS), case=False, na=False
+    )
+
+    # --------------------------
+    # 3. Support Issue Categorization
+    # --------------------------
+    def categorize_support_issue(review):
+        """Classify support-related issues into subcategories"""
+        review_text = str(review).lower()
+        for category, keywords in SUPPORT_CATEGORIES.items():
+            if any(keyword in review_text for keyword in keywords):
+                return category
+        return None
+
+    df['Support_Issue'] = df['Review'].apply(categorize_support_issue)
+
+    # --------------------------
+    # 4. Issue Type Classification
+    # --------------------------
+    def classify_issue(row):
+        """Determine primary issue category for each review"""
+        if row['UI_Issue']:
+            return 'UI Issue'
+        elif row['Performance_Issue']:
+            return 'Performance Issue'
+        elif pd.notna(row['Support_Issue']):
+            return row['Support_Issue']
+        elif row['Feature_Request']:
+            return 'Feature Request'
+        return 'Other'
+
+    df['Issue_Type'] = df.apply(classify_issue, axis=1)
+
+    # ==================================================
+    # Visualization: Sunburst Chart
+    # ==================================================
+    # Prepare data for visualization
+    # ==================================================
+# Modified Sunburst Chart with Counts & Red Theme
+# ==================================================
+
+        # ==================================================
+    # Corrected Sunburst Chart with Count Display
+    # ==================================================
+
+    # Filter out 'Other' category and prepare data
+    # ========================================================
+# Presentation-Ready Sunburst Chart (Red Corporate Theme)
+# ========================================================
+
+    # Prepare filtered data
+    issue_data = df[df['Issue_Type'] != 'Other'] \
+                .groupby(['Issue_Type', 'Rating'], observed=True) \
+                .size() \
+                .reset_index(name='Reports')
+
+    # Create base chart
+    sunburst = px.sunburst(
+        issue_data,
+        path=['Issue_Type', 'Rating'],
+        values='Reports',
+        title='<b>Customer Feedback Analysis</b>',
+        color='Issue_Type',
+        color_discrete_sequence=px.colors.sequential.Redor,
+        width=800,
+        height=800
+    )
+
+    # Premium styling adjustments
+    sunburst.update_traces(
+        texttemplate='<b>%{label}</b><br>%{value:.0f} Reports',
+        textfont=dict(
+            family="Arial",
+            size=20,
+            color='white'
+        ),
+        marker=dict(
+            line=dict(
+                color='rgba(255,255,255,0.8)', 
+                width=1.5
+            )
+        ),
+        hovertemplate='<b>%{label}</b><br>%{value:.0f} Reports<extra></extra>'
+    )
+
+    sunburst.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=100, l=20, r=20, b=20),
+        title={
+            'text': '<b>Customer Feedback Analysis</b>',
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {
+                'size': 24,
+                'color': '#c00000',
+                'family': 'Arial Black'
+            }
+        },
+        legend=dict(
+            bgcolor='rgba(255,255,255,0.8)',
+            font=dict(
+                size=12,
+                color='#5a5a5a'
+            )
+        ),
+        uniformtext=dict(
+            minsize=14,
+            mode='hide'
+        )
+    )
+
+    # Add corporate watermark
+    sunburst.add_annotation(
+        text="KULT Analytics",
+        x=0.5, y=-0.1,
+        showarrow=False,
+        font=dict(
+            size=12,
+            color='#c00000'
+        ),
+        xref="paper",
+        yref="paper"
+    )
+
+    st.plotly_chart(sunburst, use_container_width=True)
 
 
 with tab2:
@@ -855,99 +1045,6 @@ with tab2:
     else:
         st.warning("No reviews available for word cloud")
     
-    st.subheader("Review Word Cloud")
-    text = " ".join(review for review in filtered_df['Review'])
-
-    if text.strip():
-        # Generate Word Cloud with more styling options
-        wordcloud = WordCloud(
-            width=1200,
-            height=600,
-            background_color='white',
-            colormap='viridis',
-            max_words=200,
-            contour_width=1,
-            contour_color='steelblue'
-        ).generate(text)
-
-        # Display directly using Streamlit without matplotlib
-        st.image(
-            wordcloud.to_array(),
-            caption="Most Frequent Words in Reviews",
-            use_column_width=True
-        )
-        
-        # Add customization options in an expander
-        with st.expander("Word Cloud Info"):
-            st.markdown("""
-            - Larger words indicate higher frequency
-            - Color spectrum shows word diversity
-            - Hover/click to see full-size image
-            """)
-            st.download_button(
-                label="Download Word Cloud",
-                data=wordcloud.to_image().tobytes(),
-                file_name="word_cloud.png",
-                mime="image/png"
-            )
-    else:
-        st.warning("No reviews available to generate word cloud")
-    from PIL import Image
-
-    st.subheader("Car-Shaped Word Cloud")
-    text = " ".join(review for review in filtered_df['Review'])
-
-    if text.strip():
-        # Load car silhouette mask (replace with your own car PNG path)
-        car_mask = np.array(Image.open("image/Screenshot 2025-04-02 at 1.00.01 AM.png"))  # White background, black car shape
-        
-        # Create red color function with metallic effect
-        def car_color_func(word, font_size, position, orientation, **kwargs):
-            reds = ['#FFB3BA', '#FF9999', '#FF6666', '#FF4444', '#D32F2F']
-            return np.random.choice(reds)
-
-        # Generate word cloud
-        wordcloud = WordCloud(
-            width=1000,
-            height=600,
-            mask=car_mask,
-            background_color='white',
-            contour_width=2,
-            contour_color='#FF4444',
-            color_func=car_color_func,
-            max_words=200,
-            relative_scaling=0.3,
-            prefer_horizontal=0.7
-        ).generate(text)
-
-        # Display with styling
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.image(
-                wordcloud.to_array(),
-                caption="Car-Shaped Review Analysis",
-                use_column_width=True
-            )
-        
-        with col2:
-            st.markdown("""
-                **Design Features**
-                - Modern car silhouette shape
-                - Metallic red color palette
-                - Chrome-accented contours
-                - Aerodynamic text flow
-                """)
-            
-            # Upload alternative car shapes
-            custom_mask = st.file_uploader("Upload your own car silhouette", 
-                                        type=['png', 'jpg'])
-            st.download_button("Download Car Word Cloud", 
-                            wordcloud.to_image().tobytes(),
-                            "car_wordcloud.png")
-
-    else:
-        st.warning("No reviews available for visualization")
-
     
     # Top Complaint Analysis
     st.subheader("Top 10 Complaint Analysis")
@@ -1242,6 +1339,18 @@ with tab4:
         }
     }
 
+    st.header("🔍 Comprehensive Issues Analysis")
+
+        # Get all issue columns from config
+    issue_columns = [v['column'] for v in ISSUE_CONFIG.values()]
+
+    # Calculate reviews with at least one issue
+    reviews_with_issues = filtered_df[issue_columns].any(axis=1).sum()
+
+    # Display KPI at the top
+    st.metric("Reviews with Issues", 
+            f"{reviews_with_issues}/{len(filtered_df)}",
+            help="Number of reviews containing at least one reported issue")
     # Unified Issues Analysis Section
     with st.expander("🔍 Unified Issue Analysis", expanded=True):
         # Issue Selection
@@ -1272,18 +1381,63 @@ with tab4:
         tab1, tab2, tab3 = st.tabs(["Trend Analysis", "Term Cloud", "Deep Dive"])
         
         with tab1:
-            # Trend Chart
-            trend_data = filtered_df.groupby('Month_Year')[issue_col].mean().reset_index()
+            # Prepare combined trend data
+            trend_data = filtered_df.groupby('Month_Year').agg({
+                issue_col: 'mean',
+                'Sentiment_Score': 'mean'
+            }).reset_index()
+            
+            # Convert proportions to percentages
+            trend_data[issue_col] = trend_data[issue_col] * 100
+            
+            # Create figure with secondary y-axis
             fig_trend = px.line(
                 trend_data,
                 x='Month_Year',
                 y=issue_col,
-                title=f"{config['title']} Trend Over Time",
-                labels={issue_col: '% of Reviews', 'Month_Year': 'Month'},
-                color_discrete_sequence=[config['color']]
+                title=f"{config['title']} Trend vs Sentiment",
+                labels={
+                    issue_col: '% of Reviews',
+                    'Month_Year': 'Month',
+                    'Sentiment_Score': 'Avg Sentiment'
+                },
+                color_discrete_sequence=[config['color'], '#00CED1']
             )
-            st.plotly_chart(fig_trend, use_container_width=True, key=f"trend_{selected_issue}")
-        
+            
+            # Add sentiment line
+            fig_trend.add_scatter(
+                x=trend_data['Month_Year'],
+                y=trend_data['Sentiment_Score'],
+                mode='lines',
+                name='Avg Sentiment',
+                line=dict(color='#00CED1', width=1.5),
+                yaxis='y2'
+            )
+            
+            # Update layout for dual axes
+            fig_trend.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(showgrid=False),
+                yaxis=dict(
+                    title='% of Reviews',
+                    showgrid=False,
+                    range=[0, 100]  # Percentage scale
+                ),
+                yaxis2=dict(
+                    title='Sentiment Score',
+                    overlaying='y',
+                    side='right',
+                    range=[-1, 1],  # Sentiment score range
+                    showgrid=False
+                ),
+                legend=dict(
+                    x=1.1,
+                    y=1,
+                    bgcolor='rgba(255,255,255,0.5)'
+                )
+            )
+            
+            st.plotly_chart(fig_trend, use_container_width=True)
         with tab2:
             # Word Cloud
             issue_reviews = " ".join(filtered_df[filtered_df[issue_col]]['Review'])
@@ -1502,15 +1656,6 @@ with tab4:
             else:
                 st.info("No support complaints found")
         
-        # Response Time Impact
-        if 'Reply_Time_Days' in filtered_df.columns and not filtered_df[filtered_df['Reply'] != "No Reply"].empty:
-            fig = px.scatter(filtered_df[filtered_df['Reply'] != "No Reply"],
-                            x='Reply_Time_Days', y='Rating',
-                            title="Response Time vs. Rating",
-                            labels={'Reply_Time_Days': 'Days to Respond'})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No response time data available")
     
     # Monetization
     with st.expander("💰 Monetization", expanded=True):
@@ -1538,37 +1683,7 @@ with tab4:
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No subscription issues found")
-    
-    # User Retention
-    with st.expander("👥 User Retention", expanded=True):
-        ret_col1, ret_col2, ret_col3 = st.columns(3)
-        
-        with ret_col1:
-            loyal_users = filtered_df['User_Type'].value_counts().get('Loyal', 0)
-            st.metric("Loyal Users", loyal_users)
-        
-        with ret_col2:
-            retention_rate = (filtered_df['Review_Count'] > 1).mean() * 100
-            st.metric("Retention Rate", f"{retention_rate:.1f}%")
-        
-        with ret_col3:
-            loyal_sentiment = filtered_df[filtered_df['User_Type'] == 'Loyal']['Sentiment_Score'].mean()
-            st.metric("Loyal User Sentiment", f"{loyal_sentiment:.2f}")
-        
-        # Loyal User Analysis
-        if 'User_Type' in filtered_df.columns:
-            loyal_analysis = filtered_df.groupby('User_Type').agg({
-                'Rating': 'mean',
-                'Sentiment_Score': 'mean',
-                'Review_Count': 'mean'
-            })
-            if not loyal_analysis.empty:
-                fig = px.bar(loyal_analysis, barmode='group',
-                            title="Loyal vs First-Time Users")
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No user type data available")
-    
+     
     # Prioritization Matrix
     st.subheader("📊 Issue Prioritization Matrix")
     priority_data = {
