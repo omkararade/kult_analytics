@@ -245,7 +245,7 @@ def generate_forecast(df):
     
 @st.cache_data
 def load_data():
-    df = pd.read_csv("google_play_reviews.csv")
+    df = pd.read_csv("Kult_App.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()

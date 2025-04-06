@@ -30,7 +30,7 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Beauty Kult App Analytics Dashboard",
+    page_title="Dostt App Analytics Dashboard",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -204,7 +204,7 @@ def generate_forecast(df):
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("google_play_reviews.csv")
+    df = pd.read_csv("Dostt_App.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()
@@ -348,16 +348,6 @@ df = load_data()
 
 # Sidebar Filters
 st.sidebar.header("🔍 Dashboard Filters")
-with st.sidebar.expander("⏰ Time Period", expanded=True):
-    min_date = df['Date'].min().to_pydatetime()
-    max_date = df['Date'].max().to_pydatetime()
-    date_range = st.date_input(
-        "Select Date Range",
-        value=[min_date, max_date],
-        min_value=min_date,
-        max_value=max_date,
-        key="date_range_filter"
-    )
 
 with st.sidebar.expander("⭐ Rating & Sentiment", expanded=True):
     rating_range = st.slider(
@@ -377,12 +367,12 @@ with st.sidebar.expander("⭐ Rating & Sentiment", expanded=True):
 # Apply Filters
 filtered_df = df[
     (df['Rating'].between(rating_range[0], rating_range[1])) &
-    (df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
+    #(df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
     (df['Sentiment'].isin(sentiment_filter))
 ].copy()
 
 # Main Dashboard
-st.title("📊 Beauty Kult App Analytics Dashboard")
+st.title("📊 Dostt App Analytics Dashboard")
 
 # KPI Cards with Competitive Benchmark
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -417,38 +407,64 @@ with tab1:
     st.header("📈 Trends Over Time")
     
     # Rating Trend
+    from datetime import datetime
+
+    # Convert to datetime first (if not already done)
+    filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])  # Replace 'Date_Column' with your actual date column
+    filtered_df['Month_Year'] = filtered_df['Date'].dt.to_period('M').dt.strftime('%b %Y')  # Format: "Jan 2023"
+
+    # Rating Trend with Year-Month
     trend_data = filtered_df.groupby('Month_Year').agg(
         Avg_Rating=('Rating', 'mean'),
         Review_Count=('Rating', 'count')
     ).reset_index()
-    
+
+    # Sort chronologically using datetime
+    trend_data['Sort_Key'] = pd.to_datetime(trend_data['Month_Year'], format='%b %Y')
+    trend_data = trend_data.sort_values('Sort_Key')
+
     fig = px.line(trend_data, x='Month_Year', y='Avg_Rating',
-                 title="Average Rating Over Time",
-                 labels={'Avg_Rating': 'Average Rating', 'Month_Year': 'Month'})
+                title="Average Rating Over Time",
+                labels={'Avg_Rating': 'Average Rating'},
+                markers=True)
+    fig.update_xaxes(type='category')  # Force display all labels
     st.plotly_chart(fig, use_container_width=True)
     
     # Sentiment Trend
     # Sentiment Trend with Red Color
     sentiment_trend = filtered_df.groupby('Month_Year')['Sentiment_Score'].mean().reset_index()
+    
+        # Convert Month_Year to datetime for sorting
+    sentiment_trend['Sort_Key'] = pd.to_datetime(sentiment_trend['Month_Year'], format='%b %Y')
+
+    # Sort by actual date
+    sentiment_trend = sentiment_trend.sort_values('Sort_Key')
+
+    # Create plot
     fig = px.line(sentiment_trend, x='Month_Year', y='Sentiment_Score',
                 title="<b>Sentiment Trend Over Time</b>",
                 labels={'Sentiment_Score': 'Average Sentiment Score'},
-                color_discrete_sequence=['#CB2726'])  # Red color code
+                color_discrete_sequence=['#CB2726'])
 
+    # Force categorical ordering to preserve sorted sequence
+    fig.update_xaxes(
+        type='category',
+        categoryorder='array', 
+        categoryarray=sentiment_trend['Month_Year']
+    )
+
+    # Rest of your formatting
     fig.update_traces(line=dict(width=2.5),
                     mode='lines',
                     marker=dict(size=8))
                     
     fig.update_layout(
-        plot_bgcolor='rgba(255,255,255,0.8)',
+        plot_bgcolor='rgba(0,0,0,0)',
         xaxis_title='<b>Month/Year</b>',
         yaxis_title='<b>Average Sentiment Score</b>',
-        title_font=dict(size=20, color='#2C3E50')
-    )
-    fig.update_layout(
-        xaxis=dict(showgrid=False),  # Remove vertical grid lines
-        yaxis=dict(showgrid=False),  # Remove horizontal grid lines
-        plot_bgcolor='rgba(0,0,0,0)'  # Make background transparent
+        title_font=dict(size=20, color='#2C3E50'),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False)
     )
 
     st.plotly_chart(fig, use_container_width=True)

@@ -33,7 +33,7 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Carinfo App Analytics Dashboard",
+    page_title="Dostt App Analytics Dashboard",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -244,7 +244,7 @@ def generate_forecast(df):
     
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Prune_App.csv")
+    df = pd.read_csv("Dostt_App.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()
@@ -390,16 +390,6 @@ df = load_data()
 
 # Sidebar Filters
 st.sidebar.header("🔍 Dashboard Filters")
-with st.sidebar.expander("⏰ Time Period", expanded=True):
-    min_date = df['Date'].min().to_pydatetime()
-    max_date = df['Date'].max().to_pydatetime()
-    date_range = st.date_input(
-        "Select Date Range",
-        value=[min_date, max_date],
-        min_value=min_date,
-        max_value=max_date,
-        key="date_range_filter"
-    )
 
 with st.sidebar.expander("⭐ Rating & Sentiment", expanded=True):
     rating_range = st.slider(
@@ -419,7 +409,7 @@ with st.sidebar.expander("⭐ Rating & Sentiment", expanded=True):
 # Apply Filters
 filtered_df = df[
     (df['Rating'].between(rating_range[0], rating_range[1])) &
-    (df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
+    #(df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
     ((df['Sentiment'].isin(sentiment_filter)) if sentiment_filter else True)
 ].copy()
 
@@ -479,6 +469,29 @@ with tab1:
         legend=dict(x=1.1)
     )
 
+    st.plotly_chart(fig, use_container_width=True)
+
+    from datetime import datetime
+
+    # Convert to datetime first (if not already done)
+    filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])  # Replace 'Date_Column' with your actual date column
+    filtered_df['Month_Year'] = filtered_df['Date'].dt.to_period('M').dt.strftime('%b %Y')  # Format: "Jan 2023"
+
+    # Rating Trend with Year-Month
+    trend_data = filtered_df.groupby('Month_Year').agg(
+        Avg_Rating=('Rating', 'mean'),
+        Review_Count=('Rating', 'count')
+    ).reset_index()
+
+    # Sort chronologically using datetime
+    trend_data['Sort_Key'] = pd.to_datetime(trend_data['Month_Year'], format='%b %Y')
+    trend_data = trend_data.sort_values('Sort_Key')
+
+    fig = px.line(trend_data, x='Month_Year', y='Avg_Rating',
+                title="Average Rating Over Time",
+                labels={'Avg_Rating': 'Average Rating'},
+                markers=True)
+    fig.update_xaxes(type='category')  # Force display all labels
     st.plotly_chart(fig, use_container_width=True)
     # ---- Sentiment Analysis ----
     col1, col2 = st.columns([3, 1])
@@ -550,6 +563,18 @@ with tab1:
     fig = px.bar(weekday_counts, 
                 title="Review Volume by Day of Week",
                 labels={'value': 'Number of Reviews', 'index': 'Day of Week'})
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Average Rating by Weekday
+    weekday_ratings = filtered_df.groupby('Weekday')['Rating'].mean().reindex([
+        'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ])
+    fig = px.bar(weekday_ratings, 
+                title="Average Rating by Day of Week",
+                labels={'value': 'Average Rating', 'index': 'Day of Week'},
+                color=weekday_ratings.values,
+                color_continuous_scale='Reds')
+    fig.update_layout(yaxis_range=[1,5])  # Assuming ratings are 1-5
     st.plotly_chart(fig, use_container_width=True)
 
     # Sample(Test Additional Graphs)
@@ -889,16 +914,6 @@ with tab1:
     # Prepare data for visualization
     # ==================================================
 # Modified Sunburst Chart with Counts & Red Theme
-# ==================================================
-
-        # ==================================================
-    # Corrected Sunburst Chart with Count Display
-    # ==================================================
-
-    # Filter out 'Other' category and prepare data
-    # ========================================================
-# Presentation-Ready Sunburst Chart (Red Corporate Theme)
-# ========================================================
 
     # Prepare filtered data
     issue_data = df[df['Issue_Type'] != 'Other'] \
@@ -1339,7 +1354,6 @@ with tab4:
         }
     }
 
-    st.header("🔍 Comprehensive Issues Analysis")
 
         # Get all issue columns from config
     issue_columns = [v['column'] for v in ISSUE_CONFIG.values()]
@@ -1383,37 +1397,29 @@ with tab4:
         with tab1:
             # Prepare combined trend data
             trend_data = filtered_df.groupby('Month_Year').agg({
-                issue_col: 'mean',
-                'Sentiment_Score': 'mean'
+                issue_col: 'mean'
             }).reset_index()
-            
+
             # Convert proportions to percentages
             trend_data[issue_col] = trend_data[issue_col] * 100
-            
+
+            # Ensure Month_Year is datetime and sorted
+            trend_data['Month_Year'] = pd.to_datetime(trend_data['Month_Year'], format='%b %Y')  # adjust format as needed
+            trend_data = trend_data.sort_values('Month_Year')
+
             # Create figure with secondary y-axis
             fig_trend = px.line(
                 trend_data,
                 x='Month_Year',
                 y=issue_col,
-                title=f"{config['title']} Trend vs Sentiment",
+                title=f"{config['title']} Trend",
                 labels={
                     issue_col: '% of Reviews',
-                    'Month_Year': 'Month',
-                    'Sentiment_Score': 'Avg Sentiment'
+                    'Month_Year': 'Month'
                 },
                 color_discrete_sequence=[config['color'], '#00CED1']
             )
-            
-            # Add sentiment line
-            fig_trend.add_scatter(
-                x=trend_data['Month_Year'],
-                y=trend_data['Sentiment_Score'],
-                mode='lines',
-                name='Avg Sentiment',
-                line=dict(color='#00CED1', width=1.5),
-                yaxis='y2'
-            )
-            
+
             # Update layout for dual axes
             fig_trend.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1421,13 +1427,13 @@ with tab4:
                 yaxis=dict(
                     title='% of Reviews',
                     showgrid=False,
-                    range=[0, 100]  # Percentage scale
+                    range=[0, 100]
                 ),
                 yaxis2=dict(
                     title='Sentiment Score',
                     overlaying='y',
                     side='right',
-                    range=[-1, 1],  # Sentiment score range
+                    range=[-1, 1],
                     showgrid=False
                 ),
                 legend=dict(
@@ -1436,8 +1442,14 @@ with tab4:
                     bgcolor='rgba(255,255,255,0.5)'
                 )
             )
-            
+
             st.plotly_chart(fig_trend, use_container_width=True)
+
+        
+        
+        
+        
+        
         with tab2:
             # Word Cloud
             issue_reviews = " ".join(filtered_df[filtered_df[issue_col]]['Review'])
@@ -1518,7 +1530,7 @@ with tab4:
                     z=corr_data.values,
                     x=corr_data.columns.tolist(),
                     y=corr_data.index.tolist(),
-                    colorscale='Blues'
+                    colorscale='reds'
                 )
                 st.plotly_chart(fig_corr, use_container_width=True, key=f"correlation_{selected_issue}")
 
@@ -1747,9 +1759,11 @@ with tab5:
             st.subheader("Rating Distribution")
             rating_dist = filtered_df['Rating'].value_counts().sort_index()
             fig = px.bar(rating_dist, 
-                         labels={'value': 'Count', 'index': 'Stars'},
-                         color=rating_dist.index,
-                         color_continuous_scale='tealgrn')
+                        labels={'value': 'Count', 'index': 'Stars'},
+                        color_discrete_sequence=['#FF0000']  # Pure red hex code
+                        )
+            fig.update_traces(marker_color='#CB2726',  # Ensures full red coloring
+                            selector=dict(type='bar'))
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
