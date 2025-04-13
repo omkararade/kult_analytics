@@ -204,7 +204,7 @@ def generate_forecast(df):
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Dostt_App.csv")
+    df = pd.read_csv("Josh_App.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()

@@ -22,6 +22,8 @@ from io import BytesIO
 import matplotlib.patheffects as PathEffects
 from prophet.plot import plot_plotly, plot_components_plotly
 from matplotlib import cm
+from plotly.subplots import make_subplots
+
 
 # Initialize NLTK
 try:
@@ -33,7 +35,7 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Dostt App Analytics Dashboard",
+    page_title="Swiggy App Analytics Dashboard",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -161,7 +163,7 @@ def generate_report(df):
         
         # Title
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, txt="Car Info App Analytics Report", ln=1, align='C')
+        pdf.cell(200, 10, txt="Josh App Analytics Report", ln=1, align='C')
         pdf.set_font("Arial", size=12)
         
         # Date
@@ -211,6 +213,108 @@ def generate_report(df):
         st.error(f"Failed to generate PDF report: {str(e)}")
         return b''
 
+ISSUE_CONFIG = {
+        'ui_issue': {
+            'column': 'UI_Issue',
+            'title': 'UI/UX Issues',
+            'color': '#CB2726',
+            'keywords': ['slow', 'lag', 'bug', 'glitch', 'crash', 'freeze', 'complicated', 'hard', 'navigation','unresponsive','delay','latency','stutter',
+        'load time','resource intensive','memory leak','instability','error','failure','hang','confusing','difficult','intricate','unintuitive','cumbersome',
+        'tedious','user-friendly','accessibility','workflow','steps','process','layout','design','interface','discoverability','pixelated','distorted',
+        'alignment','animation','responsiveness','touch','click','scroll','visual','rendering','display','font','color','data loss','sync','save',
+               'input','output','search','filter','functionality','feature','compatibility','frustrating','annoying','irritating','problem','issue','bad',
+               'poor','broken','useless','disappointing']
+        },
+        'performance_issue': {
+            'column': 'Performance_Issue',
+            'title': 'Performance Issues',
+            'color': '#CB2726',
+            'keywords': ['crash','freeze','lag','slow','bug','glitch','not responding','stuck','hangs',
+    'loading','performance','unstable','error','delay','latency','stutter','load time',
+    'resource intensive','memory leak','instability','failure','unresponsive','rendering','optimization']
+        },
+        'feature_request': {
+            'column': 'Feature_Request',
+            'title': 'Feature Requests',
+            'color': '#CB2726',
+            'keywords': ['should have', 'need', 'want', 'please add', 'where is', 'why no', 'missing', 'would love',
+            'wish there was', 'suggest', 'recommend', 'hope to see', 'require', 'desire', 'looking for',
+            'could use', 'it would be great if', 'it would be helpful if', 'is there a way to',
+            'is it possible to', 'consider adding', 'Id like to see', 'Im trying to find',
+            'can you implement', 'how do I', 'is it possible to get', 'is there', 'Im looking for']
+        },
+        'support_complaint': {
+            'column': 'Support_Complaint',
+            'title': 'Support Issues',
+            'color': '#CB2726',
+            'keywords': {'No Response': ['no reply', 'no answer', 'ignored', 'no help', 'no response', 'never responded', 'no feedback'],
+        'Slow Response': ['slow response', 'took long', 'days to reply', 'delayed response', 'long wait', 'prolonged delay', 'late reply'],
+        'Unhelpful': ['not helpful', 'useless', 'did not solve', 'waste of time', 'ineffective', 'unhelpful', 'did not assist', 'no solution', 'failed to resolve'],
+        'Rude Staff': ['rude', 'arrogant', 'unprofessional', 'angry', 'impolite', 'disrespectful', 'hostile', 'offensive', 'dismissive']
+            }
+        },
+        'pricing_complaint': {
+            'column': 'Pricing_Complaint',
+            'title': 'Pricing Issues',
+            'color': '#CB2726',
+            'keywords': ['expensive','overpriced','pricey','too much','not worth','high price','cost too much',
+        'unfair','cheaper','lower price','reduce price','price hike','cost','value','affordable']
+        },
+        'delivery_issues': {
+        'column': 'delivery_issues',
+        'title': 'Delivery Issues',
+        'color': '#FF6B6B',
+        'keywords': [
+            'late delivery', 'delayed', 'not delivered', 'delivery time', 'driver late', 'took too long',
+            'ETA', 'wrong address', 'missed delivery', 'delivery failed', 'reschedule', 'never arrived',
+            'package delay', 'delivery issue', 'still waiting', 'came late', 'got it late', 'delay in delivery',
+            'order late', 'order not here', 'waiting for my order', 'where is my order', 'running late',
+            'delivered to wrong address', 'delivered somewhere else', 'didn’t show up', 'arrived late'
+        ]
+        },
+        'payment_issue': {
+        'column': 'Payment_Problems',
+        'title': 'Payment Problems',
+        'color': '#FFA500',
+        'keywords': [
+            'payment failed', 'transaction error', 'card declined', 'not processed', 'double charged',
+            'overcharged', 'refund pending', 'refund delay', 'payment issue', "can't pay", 'not refunded',
+            'incorrect amount', 'failed to pay', 'billing error', 'charge issue', 'charged twice',
+            'money deducted', 'amount not refunded', 'payment stuck', 'did not get refund',
+            'transaction declined', 'unable to pay', 'app charged me', 'no confirmation after payment',
+            'payment not successful'
+        ]
+        },
+        'food_quality': {
+        'column': 'Food_Quality',
+        'title': 'Food Quality',
+        'color': '#6A5ACD',
+        'keywords': [
+            'stale food', 'not fresh', 'cold food', 'bad taste', 'spoiled', 'poor quality',
+            'packaging issue', 'leaked', 'damaged package', 'soggy', 'missing items', 'wrong item',
+            'undercooked', 'overcooked', 'smells bad', 'rotten', 'food poisoning', 'not edible',
+            'food was cold', 'food was awful', 'not good', 'unhygienic', 'dirty packaging',
+            'weird smell', 'wrong dish', 'order messed up', 'hair in food', 'low quality', 'bad smell'
+        ]
+        },
+        'promotions_issue': {
+        'column': 'Promotions_Issues',
+        'title': 'Promotions and Coupons',
+        'color': '#32CD32',
+        'keywords': [
+            'coupon not working', 'promo code invalid', 'offer not applied', 'discount not working',
+            'code expired', "can't use promo", 'offer issue', 'not eligible', "didn't get discount",
+            'cashback not received', 'free delivery not applied', 'reward not credited',
+            'code not accepted', 'voucher didn’t work', 'promo didn’t apply', 'invalid promo',
+            'didn’t get offer', 'promotion failed', 'no discount received', 'promo not working',
+            'discount missing', 'free item not added', 'applying coupon failed', 'reward missing'
+        ]
+        },
+
+
+    }
+
+
 # 1. Correct Forecast Function
 def generate_forecast(df):
     """Generate rating forecast using Prophet with error handling"""
@@ -244,7 +348,7 @@ def generate_forecast(df):
     
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Dostt_App.csv")
+    df = pd.read_csv("Swiggy_13k+.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()
@@ -360,7 +464,45 @@ def load_data():
     'Unexpected Charges': ['unexpected charge', 'hidden fee', 'surprise charge', 'unauthorized charge', 'extra fees', 'unknown charge', 'incorrect billing'],
     'Refund Problems': ['refund', 'money back', 'not refund', 'no refund', 'refund denied', 'refund issues', 'refund process', 'refund policy'],
     'Value Issues': ['not worth', 'waste of money', 'better free', 'overpriced subscription', 'poor value', 'not worth the cost', 'expensive for what it offers']
-}
+    }
+    DELIVERY_ISSUE_KEYWORDS = [
+    'late delivery', 'delayed', 'not delivered', 'delivery time', 'driver late', 'took too long',
+    'ETA', 'wrong address', 'missed delivery', 'delivery failed', 'reschedule', 'never arrived',
+    'package delay', 'delivery issue', 'still waiting', 'came late', 'got it late', 'delay in delivery',
+    'order late', 'order not here', 'waiting for my order', 'where is my order', 'running late',
+    'delivered to wrong address', 'delivered somewhere else', 'didn’t show up', 'arrived late'
+    ]
+    df['delivery_issues'] = df['Review'].str.contains('|'.join(DELIVERY_ISSUE_KEYWORDS), case=False, na=False)
+    PAYMENT_PROBLEM_KEYWORDS = [
+    'payment failed', 'transaction error', 'card declined', 'not processed', 'double charged',
+    'overcharged', 'refund pending', 'refund delay', 'payment issue', "can't pay", 'not refunded',
+    'incorrect amount', 'failed to pay', 'billing error', 'charge issue', 'charged twice',
+    'money deducted', 'amount not refunded', 'payment stuck', 'did not get refund',
+    'transaction declined', 'unable to pay', 'app charged me', 'no confirmation after payment',
+    'payment not successful']
+    df['Payment_Problems'] = df['Review'].str.contains('|'.join(PAYMENT_PROBLEM_KEYWORDS), case=False, na=False)
+    FOOD_QUALITY_KEYWORDS = [
+    'stale food', 'not fresh', 'cold food', 'bad taste', 'spoiled', 'poor quality',
+    'packaging issue', 'leaked', 'damaged package', 'soggy', 'missing items', 'wrong item',
+    'undercooked', 'overcooked', 'smells bad', 'rotten', 'food poisoning', 'not edible',
+    'food was cold', 'food was awful', 'not good', 'unhygienic', 'dirty packaging',
+    'weird smell', 'wrong dish', 'order messed up', 'hair in food', 'low quality', 'bad smell'
+]
+    df['Food_Quality'] = df['Review'].str.contains('|'.join(FOOD_QUALITY_KEYWORDS), case=False, na=False)
+    PROMOTION_ISSUE_KEYWORDS = [
+    'coupon not working', 'promo code invalid', 'offer not applied', 'discount not working',
+    'code expired', "can't use promo", 'offer issue', 'not eligible', "didn't get discount",
+    'cashback not received', 'free delivery not applied', 'reward not credited',
+    'code not accepted', 'voucher didn’t work', 'promo didn’t apply', 'invalid promo',
+    'didn’t get offer', 'promotion failed', 'no discount received', 'promo not working',
+    'discount missing', 'free item not added', 'applying coupon failed', 'reward missing'
+]
+    df['Promotions_Issues'] = df['Review'].str.contains('|'.join(PROMOTION_ISSUE_KEYWORDS), case=False, na=False)
+
+
+
+
+    
     
     def categorize_sub_issue(text):
         text = str(text).lower()
@@ -414,10 +556,10 @@ filtered_df = df[
 ].copy()
 
 # Main Dashboard
-st.title("Car Info App Analytics Dashboard")
+st.title("Josh App Analytics Dashboard")
 
 # KPI Cards with Competitive Benchmark
-col1, col2, col3, col4,col5 = st.columns(5)
+col1, col2, col3, col4,col5,col6 = st.columns(6)
 with col2:
     avg_rating = filtered_df['Rating'].mean()
     st.metric("Average Rating", f"{avg_rating:.1f}")
@@ -436,6 +578,10 @@ with col4:
 with col5:
     neg_percent = (filtered_df['Sentiment'] == 'Negative').mean() * 100
     st.metric("Negative Sentiment", f"{neg_percent:.1f}%")
+with col6:
+    neg_percent = (filtered_df['Sentiment'] == 'Neutral').mean() * 100
+    st.metric("Neutral Sentiment", f"{neg_percent:.1f}%")
+
 
 # Tabs with New Strategy Tab
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
@@ -483,16 +629,7 @@ with tab1:
         Review_Count=('Rating', 'count')
     ).reset_index()
 
-    # Sort chronologically using datetime
-    trend_data['Sort_Key'] = pd.to_datetime(trend_data['Month_Year'], format='%b %Y')
-    trend_data = trend_data.sort_values('Sort_Key')
-
-    fig = px.line(trend_data, x='Month_Year', y='Avg_Rating',
-                title="Average Rating Over Time",
-                labels={'Avg_Rating': 'Average Rating'},
-                markers=True)
-    fig.update_xaxes(type='category')  # Force display all labels
-    st.plotly_chart(fig, use_container_width=True)
+   
     # ---- Sentiment Analysis ----
     col1, col2 = st.columns([3, 1])
     
@@ -577,6 +714,95 @@ with tab1:
     fig.update_layout(yaxis_range=[1,5])  # Assuming ratings are 1-5
     st.plotly_chart(fig, use_container_width=True)
 
+    # Histogram of star ratings
+    fig_hist = px.histogram(
+        filtered_df,
+        x='Rating',
+        nbins=5,
+        title="Distribution of Star Ratings",
+        color_discrete_sequence=['#1f77b4']
+    )
+    fig_hist.update_layout(
+        xaxis_title='Star Rating',
+        yaxis_title='Count',
+        bargap=0.2
+    )
+    st.plotly_chart(fig_hist, use_container_width=True)
+    # Ensure Date column is in datetime format
+    filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])
+
+    # Calculate midpoint date
+    midpoint_date = filtered_df['Date'].sort_values().iloc[len(filtered_df) // 2]
+
+    # Label periods as 'Before' and 'After'
+    filtered_df['Period'] = filtered_df['Date'].apply(lambda x: 'Before' if x < midpoint_date else 'After')
+
+    # Aggregate statistics for each metric
+    compare_stats = filtered_df.groupby('Period').agg({
+        'Rating': 'mean',
+        'Sentiment_Score': 'mean',
+        'Review': 'count'
+    }).rename(columns={'Review': 'Review_Count'}).reset_index()
+
+    # Create subplots for comparison
+    fig = make_subplots(
+        rows=1, cols=3, 
+        subplot_titles=("Average Rating", "Average Sentiment Score", "Number of Reviews"),
+        shared_yaxes=False
+    )
+
+    # Plot for Average Rating
+    fig.add_trace(
+        go.Bar(
+            x=compare_stats['Period'],
+            y=compare_stats['Rating'],
+            name='Average Rating',
+            marker_color='rgba(255,99,132,0.6)'
+        ),
+        row=1, col=1
+    )
+
+    # Plot for Average Sentiment Score
+    fig.add_trace(
+        go.Bar(
+            x=compare_stats['Period'],
+            y=compare_stats['Sentiment_Score'],
+            name='Sentiment Score',
+            marker_color='rgba(54,162,235,0.6)'
+        ),
+        row=1, col=2
+    )
+
+    # Plot for Number of Reviews
+    fig.add_trace(
+        go.Bar(
+            x=compare_stats['Period'],
+            y=compare_stats['Review_Count'],
+            name='Number of Reviews',
+            marker_color='rgba(75,192,192,0.6)'
+        ),
+        row=1, col=3
+    )
+
+    # Update layout
+    fig.update_layout(
+        title="Comparison Before vs After Midpoint Date",
+        showlegend=False,
+        height=500,  # Adjust the height of the figure
+        xaxis=dict(title='Period'),
+        yaxis=dict(title='Average Rating', range=[1, 5]),  # Assuming ratings are between 1 and 5
+        yaxis2=dict(title='Average Sentiment Score', range=[-1, 1]),
+        yaxis3=dict(title='Number of Reviews'),
+    )
+
+    # Show the plot
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Optional: Show midpoint date
+    st.caption(f"🗓️ Midpoint date used for comparison: **{midpoint_date.strftime('%Y-%m-%d')}**")
+
+
+
     # Sample(Test Additional Graphs)
 
     st.subheader("Metric Relationships")
@@ -595,7 +821,11 @@ with tab1:
         'UI_Issue': lambda x: x.mean() if x.sum() > 0 else np.nan,
         'Performance_Issue': lambda x: x.mean() if x.sum() > 0 else np.nan,
         'Support_Complaint': lambda x: x.mean() if x.sum() > 0 else np.nan,
-        'Feature_Request': lambda x: x.mean() if x.sum() > 0 else np.nan
+        'Feature_Request': lambda x: x.mean() if x.sum() > 0 else np.nan,
+        'delivery_issues': lambda x: x.mean() if x.sum() > 0 else np.nan,
+        'Payment_Problems': lambda x: x.mean() if x.sum() > 0 else np.nan,
+        'Food_Quality': lambda x: x.mean() if x.sum() > 0 else np.nan,
+        'Promotions_Issues': lambda x: x.mean() if x.sum() > 0 else np.nan
     }).reset_index()
 
     # Emerging Issues Timeline Section
@@ -606,7 +836,11 @@ with tab1:
         'UI_Issue': 'mean',
         'Performance_Issue': 'mean',
         'Support_Complaint': 'mean',
-        'Feature_Request': 'mean'
+        'Feature_Request': 'mean',
+        'delivery_issues': 'mean',
+        'Payment_Problems': 'mean',
+        'Food_Quality': 'mean',
+        'Promotions_Issues': 'mean'
     }).replace(0, np.nan).reset_index()
 
     # Melt for plotting and clean data
@@ -621,7 +855,11 @@ with tab1:
         'UI_Issue': 'UI/UX Issues',
         'Performance_Issue': 'Performance Issues',
         'Support_Complaint': 'Support Complaints',
-        'Feature_Request': 'Feature Requests'
+        'Feature_Request': 'Feature Requests',
+        'delivery_issues': 'Delivery Issues',
+        'Payment_Problems': 'Payment Problems',
+        'Food_Quality': 'Food Quality',
+        'Promotions_Issues': 'Promotions Issues'
     }
 
     # Create the plot
@@ -664,7 +902,7 @@ with tab1:
     st.subheader("Issue Summary Analysis")
 
     # Define columns to analyze
-    issue_columns = ['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request']
+    issue_columns = ['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request','delivery_issues', 'Payment_Problems', 'Food_Quality', 'Promotions_Issues']
 
     # Create summary dataframe and filter zeros
     issue_summary = pd.DataFrame({
@@ -734,8 +972,7 @@ with tab1:
                         .sort_index())
 
     # Format for plotting
-    type_distribution = type_distribution[['Feature Request', 'Support Issue', 
-                                        'General Complaint', 'Positive Feedback']]
+    type_distribution = type_distribution[['Feature Request', 'Support Issue','General Complaint', 'Positive Feedback']]
 
     # Create visualization
     fig = px.area(
@@ -815,13 +1052,7 @@ with tab1:
     fig.update_layout(yaxis_tickformat=".0%")
     st.plotly_chart(fig, use_container_width=True)
 
-        # ==================================================
-    # Issue Categorization System
-    # ==================================================
-
-    # --------------------------
-    # 1. Define Keyword Libraries
-    # --------------------------
+   
     UI_KEYWORDS = [
         'slow', 'lag', 'bug', 'glitch', 'crash', 'freeze', 'complicated', 'hard', 'navigation',
         'unresponsive', 'delay', 'latency', 'stutter', 'load time', 'resource intensive',
@@ -850,6 +1081,38 @@ with tab1:
         'can you implement', 'how do I', 'is it possible to get', 'is there', 'Im looking for'
     ]
 
+    delivery_keywords = [
+    'late delivery', 'delayed', 'not delivered', 'delivery time', 'driver late', 'took too long',
+    'ETA', 'wrong address', 'missed delivery', 'delivery failed', 'reschedule', 'never arrived',
+    'package delay', 'delivery issue', 'still waiting', 'came late', 'got it late', 'delay in delivery',
+    'order late', 'order not here', 'waiting for my order', 'where is my order', 'running late',
+    'delivered to wrong address', 'delivered somewhere else', 'didn’t show up', 'arrived late'
+    ]
+    payment_keywords = [
+    'payment failed', 'transaction error', 'card declined', 'not processed', 'double charged',
+    'overcharged', 'refund pending', 'refund delay', 'payment issue', "can't pay", 'not refunded',
+    'incorrect amount', 'failed to pay', 'billing error', 'charge issue', 'charged twice',
+    'money deducted', 'amount not refunded', 'payment stuck', 'did not get refund',
+    'transaction declined', 'unable to pay', 'app charged me', 'no confirmation after payment',
+    'payment not successful'
+     ]
+    food_quality_keywords = [
+    'stale food', 'not fresh', 'cold food', 'bad taste', 'spoiled', 'poor quality',
+    'packaging issue', 'leaked', 'damaged package', 'soggy', 'missing items', 'wrong item',
+    'undercooked', 'overcooked', 'smells bad', 'rotten', 'food poisoning', 'not edible',
+    'food was cold', 'food was awful', 'not good', 'unhygienic', 'dirty packaging',
+    'weird smell', 'wrong dish', 'order messed up', 'hair in food', 'low quality', 'bad smell'
+     ]
+    promotion_keywords = [
+    'coupon not working', 'promo code invalid', 'offer not applied', 'discount not working',
+    'code expired', "can't use promo", 'offer issue', 'not eligible', "didn't get discount",
+    'cashback not received', 'free delivery not applied', 'reward not credited',
+    'code not accepted', 'voucher didn’t work', 'promo didn’t apply', 'invalid promo',
+    'didn’t get offer', 'promotion failed', 'no discount received', 'promo not working',
+    'discount missing', 'free item not added', 'applying coupon failed', 'reward missing'
+     ]
+
+
     SUPPORT_CATEGORIES = {
         'No Response': ['no reply', 'no answer', 'ignored', 'no help', 'no response', 
                     'never responded', 'no feedback'],
@@ -866,17 +1129,21 @@ with tab1:
     # 2. Create Issue Flags
     # --------------------------
     # UI Issues Detection
-    df['UI_Issue'] = df['Review'].str.contains('|'.join(UI_KEYWORDS), case=False, na=False)
 
     # Performance Issues Detection
     df['Performance_Issue'] = df['Review'].str.contains(
         '|'.join(PERFORMANCE_KEYWORDS), case=False, na=False
     )
+    df['UI_Issue'] = df['Review'].str.contains('|'.join(UI_KEYWORDS), case=False, na=False)
 
     # Feature Requests Detection
     df['Feature_Request'] = df['Review'].str.contains(
         '|'.join(FEATURE_REQUEST_KEYWORDS), case=False, na=False
     )
+    df['delivery_issues'] = df['Review'].str.contains('|'.join(delivery_keywords), case=False)
+    df['Payment_Issue'] = df['Review'].str.contains('|'.join(payment_keywords), case=False)
+    df['Food_Quality_Issue'] = df['Review'].str.contains('|'.join(food_quality_keywords), case=False)
+    df['Promotion_Issue'] = df['Review'].str.contains('|'.join(promotion_keywords), case=False)
 
     # --------------------------
     # 3. Support Issue Categorization
@@ -893,7 +1160,7 @@ with tab1:
 
     # --------------------------
     # 4. Issue Type Classification
-    # --------------------------
+        # --------------------------
     def classify_issue(row):
         """Determine primary issue category for each review"""
         if row['UI_Issue']:
@@ -901,21 +1168,24 @@ with tab1:
         elif row['Performance_Issue']:
             return 'Performance Issue'
         elif pd.notna(row['Support_Issue']):
-            return row['Support_Issue']
+            return 'Support Issue'  # Fixed: Return standardized label instead of column value
         elif row['Feature_Request']:
             return 'Feature Request'
+        elif row['delivery_issues']:
+            return 'Delivery Issue'
+        elif row['Payment_Issue']:
+            return 'Payment Issue'
+        elif row['Food_Quality_Issue']:
+            return 'Food Quality Issue'
+        elif row['Promotion_Issue']:
+            return 'Promotion Issue'
+        elif row['Subscription_Complaint']:
+            return 'Subscription Issue'
         return 'Other'
 
     df['Issue_Type'] = df.apply(classify_issue, axis=1)
 
-    # ==================================================
-    # Visualization: Sunburst Chart
-    # ==================================================
-    # Prepare data for visualization
-    # ==================================================
-# Modified Sunburst Chart with Counts & Red Theme
 
-    # Prepare filtered data
     issue_data = df[df['Issue_Type'] != 'Other'] \
                 .groupby(['Issue_Type', 'Rating'], observed=True) \
                 .size() \
@@ -981,7 +1251,7 @@ with tab1:
 
     # Add corporate watermark
     sunburst.add_annotation(
-        text="KULT Analytics",
+        text="Josh App",
         x=0.5, y=-0.1,
         showarrow=False,
         font=dict(
@@ -1185,6 +1455,90 @@ with tab2:
                             st.info("No reviews match the search criteria")
 
 
+    st.header("📌 Sample Highlighted Reviews")
+    
+    # Sentiment analysis if not already done
+    if 'Sentiment' not in filtered_df.columns:
+        from textblob import TextBlob
+        def get_sentiment(text):
+            analysis = TextBlob(str(text))
+            return analysis.sentiment.polarity
+        filtered_df['Sentiment_Score'] = filtered_df['Review'].apply(get_sentiment)
+    
+    # Create scoring system for review usefulness
+    def calculate_usefulness_score(row):
+        # Score = sentiment strength * length * rating impact
+        length_weight = np.log(len(str(row['Review']))) + 1
+        return abs(row['Sentiment_Score']) * length_weight * (5 - row['Rating'])
+    
+    filtered_df['Usefulness_Score'] = filtered_df.apply(calculate_usefulness_score, axis=1)
+    
+    # Filters
+    col1, col2 = st.columns(2)
+    with col1:
+        search_keyword = st.text_input("🔍 Search reviews:")
+    with col2:
+        filter_issue = st.selectbox("Filter by issue:", 
+                                  options=["All"] + list(ISSUE_CONFIG.keys()),
+                                  format_func=lambda x: ISSUE_CONFIG[x]['title'] if x != "All" else "All")
+    
+    # Filter reviews
+    filtered_reviews = filtered_df.copy()
+    
+    # Apply keyword filter
+    if search_keyword:
+        filtered_reviews = filtered_reviews[
+            filtered_reviews['Review'].str.contains(search_keyword, case=False)
+        ]
+    
+    # Apply issue filter
+    if filter_issue != "All":
+        issue_col = ISSUE_CONFIG[filter_issue]['column']
+        filtered_reviews = filtered_reviews[filtered_reviews[issue_col]]
+    
+    # Sort and select top reviews
+    top_reviews = filtered_reviews.sort_values('Usefulness_Score', ascending=False).head(10)
+    
+    if not top_reviews.empty:
+        st.subheader(f"Top {len(top_reviews)} Most Insightful Reviews")
+        
+        for idx, row in top_reviews.iterrows():
+            # Determine sentiment color
+            sentiment_color = "#4CAF50" if row['Sentiment_Score'] > 0 else "#FF5252"
+            
+            # Highlight keywords
+            review_text = row['Review']
+            if search_keyword:
+                keywords = search_keyword.split("|")
+                for kw in keywords:
+                    review_text = re.sub(
+                        f"({kw})", 
+                        r"<span style='background-color:yellow'>\1</span>", 
+                        review_text, 
+                        flags=re.IGNORECASE
+                    )
+            
+            # Detect associated issues
+            detected_issues = []
+            for issue, config in ISSUE_CONFIG.items():
+                if row[config['column']]:
+                    detected_issues.append(config['title'])
+            
+            with st.expander(f"**{row['Rating']}★** - {row['Review'][:50]}...", expanded=False):
+                st.markdown(f"""
+                <div style="border-left: 4px solid {sentiment_color}; padding-left: 1rem;">
+                    <p style="font-size: 0.9rem; color: #666;">{row['Date'].strftime('%b %d, %Y')} | Detected issues: {', '.join(detected_issues) or 'None'}</p>
+                    <div style="margin: 0.5rem 0;">{review_text}</div>
+                    <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
+                        <span>Usefulness Score: {row['Usefulness_Score']:.1f}</span>
+                        <span>Sentiment: {row['Sentiment_Score']:.2f}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.warning("No reviews match the current filters")
+
+
     st.subheader("6-Month Rating Forecast")
     
     if not filtered_df.empty:
@@ -1217,14 +1571,16 @@ with tab2:
 with tab3:
     st.header("Insights & Recommendations")
     
-    # Sentiment Analysis
+   # Sentiment Analysis
     st.subheader("Sentiment Distribution")
     sentiment_dist = filtered_df['Sentiment'].value_counts(normalize=True).mul(100)
     fig = px.pie(sentiment_dist, values=sentiment_dist.values, names=sentiment_dist.index,
                 title="Review Sentiment Breakdown",
                 color=sentiment_dist.index,
-                color_discrete_map={'Positive': '#28a745', 'Neutral': '#ffc107', 'Negative': '#dc3545'})
+                color_discrete_map={'Positive': '#28a745', 'Neutral': '#ffc107', 'Negative': '#dc3545'},
+                hole=0.4)  # Donut chart
     st.plotly_chart(fig, use_container_width=True)
+
     
     # Feature Requests vs Issues
     col1, col2 = st.columns(2)
@@ -1267,7 +1623,7 @@ with tab3:
 
     st.subheader("🔄 Issue Prioritization Matrix")
     issue_matrix = filtered_df.melt(
-        value_vars=['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request'],
+        value_vars=['UI_Issue', 'Performance_Issue', 'Support_Complaint', 'Feature_Request','delivery_issues', 'Payment_Problems', 'Food_Quality', 'Promotions_Issues'],
         var_name='Issue',
         value_name='Reported'
     ).groupby('Issue')['Reported'].agg(['mean', 'sum']).reset_index()
@@ -1302,6 +1658,309 @@ with tab3:
             *Sentiment score: {row['Sentiment_Score']:.2f} | Calculated gap: {row['Sentiment_Rating_Gap']:.2f}*
             """)
     
+    st.header("🎯 Actionable Insights by Team")
+    
+    # Product Team Section
+    with st.expander("📱 Product Team (Bugs, Features, UI)", expanded=True):
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            # Key Metrics
+            st.metric("Critical UI Issues", 
+                     filtered_df['UI_Issue'].sum(),
+                     help="Number of reviews mentioning UI/UX problems")
+            
+            st.metric("Pending Feature Requests",
+                     filtered_df['Feature_Request'].sum(),
+                     help="Number of requested features")
+            
+            st.metric("Performance Complaints",
+                     filtered_df['Performance_Issue'].sum(),
+                     help="Reports of app slowness/crashes")
+
+        with col2:
+            # Top Issues Visualization
+            product_issues = {
+                'UI Problems': filtered_df['UI_Issue'].sum(),
+                'Feature Requests': filtered_df['Feature_Request'].sum(),
+                'Performance Issues': filtered_df['Performance_Issue'].sum()
+            }
+            
+            fig = px.bar(
+                x=list(product_issues.keys()),
+                y=list(product_issues.values()),
+                title="Product Team Priority Areas",
+                color=list(product_issues.keys()),
+                color_discrete_sequence=['#FF6B6B', '#4ECDC4', '#45B7D1']
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
+        # Operations Team Section - Corrected Code
+    with st.expander("🚚 Operations Team (Delivery, Quality)", expanded=False):
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.metric("Delivery Complaints",
+                    filtered_df['delivery_issues'].sum(),
+                    help="Late/missing deliveries reported")
+            
+            # FIXED: Check text reviews for missing items
+            missing_items_count = filtered_df[
+                filtered_df['Food_Quality']  # First check if food quality issue exists
+            ]['Review'].str.contains('missing', case=False, na=False).sum()
+            
+            st.metric("Missing Items",
+                    missing_items_count,
+                    help="Reports of incomplete orders")
+
+        with col2:
+            # Delivery Timeline Analysis
+            delivery_issues = filtered_df[filtered_df['delivery_issues']]
+            if not delivery_issues.empty:
+                fig = px.line(
+                    delivery_issues.groupby('Date')['delivery_issues'].count().reset_index(),
+                    x='Date',
+                    y='delivery_issues',
+                    title="Delivery Complaints Trend",
+                    markers=True
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No delivery complaints in selected period")
+
+     
+    # Support Team Section
+    with st.expander("📞 Support Team (Response Quality)", expanded=False):
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            support_issues = filtered_df['Support_Complaint_Type'].value_counts()
+            st.metric("Unresolved Tickets", 
+                     filtered_df['Support_Complaint'].sum())
+            
+            st.metric("Avg Response Time",
+                     "24h" if len(filtered_df) > 0 else "N/A",
+                     help="Estimated from review timestamps")
+
+        with col2:
+            if not support_issues.empty:
+                fig = px.pie(
+                    names=support_issues.index,
+                    values=support_issues.values,
+                    title="Support Complaint Types",
+                    hole=0.4,
+                    color_discrete_sequence=['#FF6B6B', '#FFA5A5', '#FFD6D6']
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No support complaints in selected period")
+
+    # Marketing Team Section
+    with st.expander("📢 Marketing Team (Promotions, Loyalty)", expanded=False):
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.metric("Coupon Issues",
+                     filtered_df['Promotions_Issues'].sum(),
+                     help="Failed promo code redemptions")
+            
+            st.metric("Positive Offer Mentions",
+                     filtered_df[filtered_df['Sentiment'] == 'Positive']['Promotions_Issues'].sum(),
+                     help="Positive mentions of promotions")
+
+        with col2:
+            # Promotion Effectiveness Analysis
+            promo_data = filtered_df[filtered_df['Promotions_Issues']]
+            if not promo_data.empty:
+                fig = px.histogram(
+                    promo_data,
+                    x='Rating',
+                    title="Promotion-Related Ratings Distribution",
+                    nbins=5,
+                    color_discrete_sequence=['#4ECDC4']
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No promotion-related feedback in selected period")
+
+    # Add action buttons
+    st.divider()
+    st.button("📩 Send Summary to Teams", help="Email this report to all team leads")
+    
+        # Add to your existing ISSUE_CONFIG
+    ISSUE_CONFIG['churn_risk'] = {
+        'column': 'Churn_Risk',
+        'title': 'Churn Risk Indicators',
+        'color': '#FF4444',
+        'keywords': [
+            r'\buninstall(ing|ed)?\b',
+            r'\bdelete(d|ing)?\b',
+            r'\bnot renew(ing)?\b',
+            r'\bcancel(ed|ling)?\b',
+            r'\bswitching to\b',
+            r'\bwon\'?t use\b',
+            r'\bnever (use|buy)\b',
+            r'\b(quit|quitting)\b',
+            r'\b(not worth|too expensive)\b',
+            r'\b(awful|terrible) experience\b'
+        ]
+    }
+
+    # Add this analysis section (could be in its own tab or expander)
+    with st.expander("🚨 Churn Risk Detection", expanded=True):
+        # Calculate churn indicators
+        churn_pattern = r'|'.join(ISSUE_CONFIG['churn_risk']['keywords'])
+        filtered_df['Churn_Risk'] = filtered_df['Review'].str.contains(
+            churn_pattern, 
+            case=False, 
+            na=False,
+            regex=True
+        )
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("High Risk Reviews", 
+                    filtered_df['Churn_Risk'].sum(),
+                    help="Reviews indicating potential churn")
+        with col2:
+            churn_avg_rating = filtered_df[filtered_df['Churn_Risk']]['Rating'].mean()
+            st.metric("Avg Rating of At-Risk Users", 
+                    f"{churn_avg_rating:.1f}★",
+                    help="Lower ratings indicate higher churn probability")
+        with col3:
+            churn_pct = filtered_df['Churn_Risk'].mean() * 100
+            st.metric("Churn Risk Percentage", 
+                    f"{churn_pct:.1f}%",
+                    help="Percentage of all reviews showing churn signs")
+
+        # Show highlighted examples
+        st.subheader("High-Risk Review Examples")
+        churn_reviews = filtered_df[filtered_df['Churn_Risk']]
+        
+        if not churn_reviews.empty:
+            for _, row in churn_reviews.head(5).iterrows():
+                highlighted_text = re.sub(
+                    f'({churn_pattern})', 
+                    r'<span style="background-color:#FFBABA">\1</span>', 
+                    row['Review'], 
+                    flags=re.IGNORECASE
+                )
+                
+                st.markdown(f"""
+                <div style="border-left: 3px solid #FF4444; 
+                            padding-left: 1rem;
+                            margin: 0.5rem 0;
+                            font-size: 0.9rem">
+                    <div style="color: #666; margin-bottom: 0.2rem">
+                        {row['Date'].strftime('%b %d')} • {row['Rating']}★
+                    </div>
+                    {highlighted_text}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No high-risk reviews detected in current filters")
+
+        # Trend analysis
+        st.subheader("Churn Risk Over Time")
+        if not churn_reviews.empty:
+            trend_data = churn_reviews.groupby('Month_Year').agg(
+                Churn_Count=('Churn_Risk', 'sum'),
+                Avg_Rating=('Rating', 'mean')
+            ).reset_index()
+
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_trace(
+                go.Bar(
+                    x=trend_data['Month_Year'],
+                    y=trend_data['Churn_Count'],
+                    name='Churn Risk Count',
+                    marker_color='#FF4444'
+                ),
+                secondary_y=False
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=trend_data['Month_Year'],
+                    y=trend_data['Avg_Rating'],
+                    name='Avg Rating',
+                    line=dict(color='#444', dash='dot')
+                ),
+                secondary_y=True
+            )
+            fig.update_layout(
+                title='Churn Risk vs User Ratings Over Time',
+                xaxis_title='Date',
+                yaxis_title='Churn Risk Count',
+                yaxis2_title='Average Rating',
+                hovermode='x unified'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No trend data available")
+
+
+    with st.expander("🌟 Best Performing Features", expanded=True):
+        positive_reviews = filtered_df[filtered_df['Sentiment'] == 'Positive']
+    
+        if not positive_reviews.empty:
+            # Feature extraction using NLP patterns
+            praise_pattern = r"""
+                (\b[A-Z][a-z]+(?:\s+[A-Za-z]+){0,3}\b)  # Capture noun phrases
+                \s+
+                (is|are|was|were|has|have|'s)\s+  # Common linking verbs
+                (awesome|great|excellent|amazing|love|like|good|fantastic|superb|perfect|useful|helpful|easy|intuitive)
+            """
+            
+            # Extract feature-praise pairs
+            features = []
+            for review in positive_reviews['Review']:
+                matches = re.finditer(praise_pattern, review, re.VERBOSE | re.IGNORECASE)
+                for match in matches:
+                    feature = match.group(1).lower().strip()
+                    praise_word = match.group(3).lower()
+                    features.append((feature, praise_word))
+            
+            # Create frequency analysis
+            if features:
+                feature_df = pd.DataFrame(features, columns=['Feature', 'Praise'])
+                top_features = feature_df['Feature'].value_counts().head(10)
+                
+                # Display metrics
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Top Praised Feature", 
+                            top_features.index[0] if len(top_features) > 0 else "N/A",
+                            help=f"Mentioned {top_features.values[0] if len(top_features) > 0 else 0} times")
+                
+                with col2:
+                    st.metric("Most Common Praise Word",
+                            feature_df['Praise'].value_counts().index[0] if len(features) > 0 else "N/A")
+                
+                # Visualization
+                fig = px.bar(
+                    top_features,
+                    orientation='h',
+                    title="Most Loved Features",
+                    labels={'index': 'Feature', 'value': 'Mentions'},
+                    color=top_features.values,
+                    color_continuous_scale='Tealgrn'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Example reviews carousel
+                st.subheader("Example Praise Quotes")
+                sampled_reviews = positive_reviews.sample(min(3, len(positive_reviews)))
+                for _, row in sampled_reviews.iterrows():
+                    st.markdown(f"""
+                    <div style="border-left: 3px solid #4CAF50; padding-left: 1rem; margin: 1rem 0">
+                        <div style="color: #666; font-size: 0.9rem">{row['Rating']}★ • {row['Date'].strftime('%b %Y')}</div>
+                        <div>"{row['Review']}"</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No specific feature praise detected in positive reviews")
+        else:
+            st.warning("No positive reviews available for analysis")
 
 
 
@@ -1333,7 +1992,11 @@ with tab4:
             'column': 'Feature_Request',
             'title': 'Feature Requests',
             'color': '#CB2726',
-            'keywords': ['should have', 'need', 'want']
+            'keywords': ['should have', 'need', 'want', 'please add', 'where is', 'why no', 'missing', 'would love',
+            'wish there was', 'suggest', 'recommend', 'hope to see', 'require', 'desire', 'looking for',
+            'could use', 'it would be great if', 'it would be helpful if', 'is there a way to',
+            'is it possible to', 'consider adding', 'Id like to see', 'Im trying to find',
+            'can you implement', 'how do I', 'is it possible to get', 'is there', 'Im looking for']
         },
         'support_complaint': {
             'column': 'Support_Complaint',
@@ -1351,8 +2014,62 @@ with tab4:
             'color': '#CB2726',
             'keywords': ['expensive','overpriced','pricey','too much','not worth','high price','cost too much',
         'unfair','cheaper','lower price','reduce price','price hike','cost','value','affordable']
-        }
+        },
+        'delivery_issues': {
+        'column': 'delivery_issues',
+        'title': 'Delivery Issues',
+        'color': '#FF6B6B',
+        'keywords': [
+            'late delivery', 'delayed', 'not delivered', 'delivery time', 'driver late', 'took too long',
+            'ETA', 'wrong address', 'missed delivery', 'delivery failed', 'reschedule', 'never arrived',
+            'package delay', 'delivery issue', 'still waiting', 'came late', 'got it late', 'delay in delivery',
+            'order late', 'order not here', 'waiting for my order', 'where is my order', 'running late',
+            'delivered to wrong address', 'delivered somewhere else', 'didn’t show up', 'arrived late'
+        ]
+        },
+        'payment_issue': {
+        'column': 'Payment_Problems',
+        'title': 'Payment Problems',
+        'color': '#FFA500',
+        'keywords': [
+            'payment failed', 'transaction error', 'card declined', 'not processed', 'double charged',
+            'overcharged', 'refund pending', 'refund delay', 'payment issue', "can't pay", 'not refunded',
+            'incorrect amount', 'failed to pay', 'billing error', 'charge issue', 'charged twice',
+            'money deducted', 'amount not refunded', 'payment stuck', 'did not get refund',
+            'transaction declined', 'unable to pay', 'app charged me', 'no confirmation after payment',
+            'payment not successful'
+        ]
+        },
+        'food_quality': {
+        'column': 'Food_Quality',
+        'title': 'Food Quality',
+        'color': '#6A5ACD',
+        'keywords': [
+            'stale food', 'not fresh', 'cold food', 'bad taste', 'spoiled', 'poor quality',
+            'packaging issue', 'leaked', 'damaged package', 'soggy', 'missing items', 'wrong item',
+            'undercooked', 'overcooked', 'smells bad', 'rotten', 'food poisoning', 'not edible',
+            'food was cold', 'food was awful', 'not good', 'unhygienic', 'dirty packaging',
+            'weird smell', 'wrong dish', 'order messed up', 'hair in food', 'low quality', 'bad smell'
+        ]
+        },
+        'promotions_issue': {
+        'column': 'Promotions_Issues',
+        'title': 'Promotions and Coupons',
+        'color': '#32CD32',
+        'keywords': [
+            'coupon not working', 'promo code invalid', 'offer not applied', 'discount not working',
+            'code expired', "can't use promo", 'offer issue', 'not eligible', "didn't get discount",
+            'cashback not received', 'free delivery not applied', 'reward not credited',
+            'code not accepted', 'voucher didn’t work', 'promo didn’t apply', 'invalid promo',
+            'didn’t get offer', 'promotion failed', 'no discount received', 'promo not working',
+            'discount missing', 'free item not added', 'applying coupon failed', 'reward missing'
+        ]
+        },
+
+
     }
+
+
 
 
         # Get all issue columns from config
@@ -1392,7 +2109,7 @@ with tab4:
             st.metric("Rating Impact", f"{impact:.1f}★", delta_color="inverse")
 
         # Common Visualizations
-        tab1, tab2, tab3 = st.tabs(["Trend Analysis", "Term Cloud", "Deep Dive"])
+        tab1, tab2, tab3,tab4 = st.tabs(["Trend Analysis", "Term Cloud", "Deep Dive",'Sentiment Breakdown'])
         
         with tab1:
             # Prepare combined trend data
@@ -1447,51 +2164,37 @@ with tab4:
 
         
         
-        
-        
-        
+                # In your word cloud section (tab4's Term Cloud tab), replace with:
         with tab2:
             # Word Cloud
             issue_reviews = " ".join(filtered_df[filtered_df[issue_col]]['Review'])
             if issue_reviews.strip():
-                # Red theme configuration
-                red_palette = ['#ffcccc', '#ff9999', '#ff6666', '#ff3333', '#ff0000']
-                red_background = '#ffffff'
-
-                # Create WordCloud with red theme
+                # Create figure explicitly
+                fig, ax = plt.subplots(figsize=(14, 8))
+                
+                # Generate word cloud
                 wordcloud = WordCloud(
                     width=1200,
                     height=600,
-                    background_color=red_background,
-                    colormap='OrRd',
-                    contour_color='#cc0000',
-                    contour_width=2,
-                    max_words=150,
-                    prefer_horizontal=0.8,
-                    color_func=lambda *args, **kwargs: np.random.choice(red_palette)
+                    background_color='white',
+                    colormap='Reds',
+                    max_words=150
                 ).generate(issue_reviews)
 
-                # Create figure with title styling
-                plt.figure(figsize=(14, 8))
-                plt.imshow(wordcloud, interpolation='bilinear')
-                plt.axis("off")
-                
-                # Presentation-style title
-                plt.title(
+                # Display using explicit axes
+                ax.imshow(wordcloud, interpolation='bilinear')
+                ax.axis("off")
+                ax.set_title(
                     f"Key Terms in {config['title']}",
                     fontsize=24,
                     pad=30,
                     color='#990000',
-                    fontweight='bold',
-                    fontfamily='sans-serif'
+                    fontweight='bold'
                 )
-                
-                # Streamlit display with centered layout
-                with st.container():
-                    col1, col2, col3 = st.columns([1, 6, 1])
-                    with col2:
-                        st.pyplot(plt, clear_figure=True, bbox_inches='tight')
-                        
+
+                # Use st.pyplot() with explicit figure
+                st.pyplot(fig)
+                plt.close(fig)  # Clean up memory
             else:
                 st.warning(f"No reviews found for {config['title']}")
         with tab3:
@@ -1533,6 +2236,191 @@ with tab4:
                     colorscale='reds'
                 )
                 st.plotly_chart(fig_corr, use_container_width=True, key=f"correlation_{selected_issue}")
+
+        with tab4:
+            # Sentiment Breakdown
+            if 'Sentiment' not in filtered_df.columns:
+                st.warning("Sentiment column not found. Ensure sentiment analysis has been applied.")
+            else:
+                sentiment_dist = filtered_df[filtered_df[issue_col]]['Sentiment'].value_counts(normalize=True).mul(100)
+                
+                if sentiment_dist.empty:
+                    st.warning(f"No sentiment data available for {config['title']}")
+                else:
+                    fig_sentiment = px.pie(
+                        sentiment_dist,
+                        values=sentiment_dist.values,
+                        names=sentiment_dist.index,
+                        title=f"{config['title']} Sentiment Breakdown",
+                        color_discrete_sequence=['#28a745', '#ffc107', '#dc3545']
+                    )
+                    st.plotly_chart(fig_sentiment, use_container_width=True, key=f"sentiment_{selected_issue}")
+
+           
+                # Collect frequency and average rating for each issue type
+        # Collect frequency and average rating for each issue type
+        urgency_data = []
+
+        # ✅ Corrected loop through ISSUE_CONFIG
+        for issue_key in ISSUE_CONFIG:
+            config = ISSUE_CONFIG[issue_key]
+            col = config['column']
+            name = config['title']
+            
+            if col in filtered_df.columns:
+                # Calculate metrics
+                frequency = filtered_df[col].mean()
+                if filtered_df[col].sum() > 0:
+                    avg_rating = filtered_df.loc[filtered_df[col] == 1, 'Rating'].mean()
+                    urgency = frequency * (5 - avg_rating)
+                else:
+                    avg_rating = 0
+                    urgency = 0
+                
+                urgency_data.append({
+                    'Issue Type': name,
+                    'Frequency': frequency,
+                    'Avg Rating': avg_rating,
+                    'Urgency': urgency
+                })
+
+        # Convert to DataFrame
+        urgency_df = pd.DataFrame(urgency_data)
+
+        # Plot the Urgency Matrix
+        if not urgency_df.empty:
+            fig = px.scatter(urgency_df, x='Frequency', y='Avg Rating', text='Issue Type',
+                            size='Urgency', color='Urgency',
+                            color_continuous_scale='Reds',
+                            title="Issue Urgency Matrix (High Frequency + Low Rating = High Urgency)")
+            fig.update_traces(textposition='top center')
+            fig.update_layout(yaxis_title='Average Rating', xaxis_title='Frequency of Issue')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Not enough data to generate urgency matrix.")
+
+        st.header("🧠 Sentiment Breakdown by Topic")
+        
+        # Create topic sentiment analysis
+        topic_data = []
+        
+        # Define your topics (align with issue config)
+        TOPIC_CONFIG = {
+            'Delivery Experience': 'delivery_issues',
+            'App Performance': 'performance_issue',
+            'Customer Support': 'support_complaint',
+            'Food Quality': 'food_quality',
+            'Pricing': 'pricing_complaint',
+            'App Usability': 'ui_issue'
+        }
+        
+        for topic_name, issue_key in TOPIC_CONFIG.items():
+            issue_col = ISSUE_CONFIG[issue_key]['column']
+            
+            # Filter reviews mentioning this topic
+            topic_reviews = filtered_df[filtered_df[issue_col]]
+            
+            if len(topic_reviews) > 0:
+                # Sentiment distribution
+                sentiment_dist = topic_reviews['Sentiment'].value_counts(normalize=True).mul(100)
+                pos = sentiment_dist.get('Positive', 0)
+                neu = sentiment_dist.get('Neutral', 0)
+                neg = sentiment_dist.get('Negative', 0)
+                
+                # Average rating
+                avg_rating = topic_reviews['Rating'].mean()
+                
+                topic_data.append({
+                    'Topic': topic_name,
+                    'Positive %': pos,
+                    'Neutral %': neu,
+                    'Negative %': neg,
+                    'Avg. Rating': avg_rating,
+                    'Reviews Count': len(topic_reviews)
+                })
+        
+        # Create dataframe and sort by negative %
+        topic_df = pd.DataFrame(topic_data).sort_values('Negative %', ascending=False)
+        
+        # Metrics row
+        st.subheader("Key Insights")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            most_issues = topic_df.iloc[0]['Topic']
+            st.metric("🚨 Most Problematic Area", most_issues)
+        with col2:
+            best_rating = topic_df[topic_df['Reviews Count'] > 10].sort_values('Avg. Rating').iloc[-1]['Topic']
+            st.metric("⭐ Best Performing Area", best_rating)
+        with col3:
+            total_topic_reviews = topic_df['Reviews Count'].sum()
+            st.metric("📝 Total Topic Mentions", total_topic_reviews)
+        
+        # Interactive table with heatmap
+        st.subheader("Detailed Breakdown")
+        
+        # Format percentages
+        display_df = topic_df.copy()
+        display_df['Positive %'] = display_df['Positive %'].apply(lambda x: f"{x:.1f}%")
+        display_df['Neutral %'] = display_df['Neutral %'].apply(lambda x: f"{x:.1f}%")
+        display_df['Negative %'] = display_df['Negative %'].apply(lambda x: f"{x:.1f}%")
+        display_df['Avg. Rating'] = display_df['Avg. Rating'].apply(lambda x: f"{x:.1f}★")
+        
+        # Create styled table
+        def color_negative(val):
+            value = float(val[:-1])
+            color = '#ffcccc' if value > 30 else '#ffe6cc' if value > 20 else '#ffffff'
+            return f'background-color: {color}'
+        
+        def color_rating(val):
+            value = float(val[:-1])
+            color = '#cce5cc' if value > 4 else '#ffe6cc' if value > 3 else '#ffcccc'
+            return f'background-color: {color}'
+        
+        styled_df = display_df.style\
+            .applymap(color_negative, subset=['Negative %'])\
+            .applymap(color_rating, subset=['Avg. Rating'])\
+            .format({'Reviews Count': '{:,}'})
+        
+        st.dataframe(
+            styled_df,
+            column_order=['Topic', 'Negative %', 'Neutral %', 'Positive %', 'Avg. Rating', 'Reviews Count'],
+            height=(len(topic_df) + 1) * 35 + 3,
+            use_container_width=True
+        )
+        
+        # Trend sparklines
+        st.caption("💡 Hover over metrics to see trend sparklines (add time dimension)")
+
+
+                # Prepare urgency data
+        urgency_data = []
+        for issue_key, config in ISSUE_CONFIG.items():
+            issue_col = config['column']
+            
+            if issue_col in filtered_df.columns:
+                # Frequency: % of reviews mentioning this issue
+                frequency = filtered_df[issue_col].mean() * 100  # as percentage
+                
+                # Avg Rating: Average rating when issue is reported (lower = worse)
+                if filtered_df[issue_col].sum() > 0:  # Ensure there are cases
+                    avg_rating = filtered_df[filtered_df[issue_col]]['Rating'].mean()
+                else:
+                    avg_rating = 5  # Default to max (no impact)
+                
+                # Urgency Score = Frequency * (5 - Avg Rating)
+                urgency_score = frequency * (5 - avg_rating)
+                
+                urgency_data.append({
+                    'Issue': config['title'],
+                    'Frequency (%)': frequency,
+                    'Avg Rating': avg_rating,
+                    'Urgency': urgency_score
+                })
+
+        urgency_df = pd.DataFrame(urgency_data)
+
+
+
 
         # Additional Metrics
         st.subheader("Impact Analysis")
@@ -1698,25 +2586,47 @@ with tab4:
      
     # Prioritization Matrix
     st.subheader("📊 Issue Prioritization Matrix")
-    priority_data = {
-        'Issue Type': ['UI/UX', 'Performance', 'Feature Requests', 'Support', 'Monetization'],
-        'Frequency': [
-            filtered_df['UI_Issue'].mean(),
-            filtered_df['Performance_Issue'].mean(),
-            filtered_df['Feature_Request'].mean(),
-            filtered_df['Support_Complaint'].mean(),
-            (filtered_df['Pricing_Complaint'] | filtered_df['Subscription_Complaint']).mean()
-        ],
-        'Impact': [
-            filtered_df.groupby('UI_Issue')['Rating'].mean().diff().iloc[-1],
-            filtered_df.groupby('Performance_Issue')['Rating'].mean().diff().iloc[-1],
-            0.5,  # Assuming feature requests have medium impact
-            filtered_df.groupby('Support_Complaint')['Rating'].mean().diff().iloc[-1],
-            filtered_df.groupby('Pricing_Complaint')['Rating'].mean().diff().iloc[-1]
-        ]
+        # Calculating the frequency for each issue type
+    frequency_data = {
+        'UI/UX': filtered_df['UI_Issue'].mean(),
+        'Performance': filtered_df['Performance_Issue'].mean(),
+        'Feature Requests': filtered_df['Feature_Request'].mean(),
+        'Support': filtered_df['Support_Complaint'].mean(),
+        'Monetization': filtered_df['Pricing_Complaint'].mean(),
+        'Delivery Issues': filtered_df['delivery_issues'].mean(),
+        'Payment Problems': filtered_df['Payment_Problems'].mean(),
+        'Food Quality': filtered_df['Food_Quality'].mean(),
+        'Promotions Issues': filtered_df['Promotions_Issues'].mean(),
+        'Subscription Complaint': filtered_df['Subscription_Complaint'].mean()
     }
-    
+
+    # Calculating the impact for each issue type (mean difference of ratings)
+    impact_data = {
+        'UI/UX': filtered_df.groupby('UI_Issue')['Rating'].mean().diff().iloc[-1],
+        'Performance': filtered_df.groupby('Performance_Issue')['Rating'].mean().diff().iloc[-1],
+        'Feature Requests': 0.5,  # Assuming feature requests have medium impact
+        'Support': filtered_df.groupby('Support_Complaint')['Rating'].mean().diff().iloc[-1],
+        'Monetization': filtered_df.groupby('Pricing_Complaint')['Rating'].mean().diff().iloc[-1],
+        'Delivery Issues': filtered_df.groupby('delivery_issues')['Rating'].mean().diff().iloc[-1],
+        'Payment Problems': filtered_df.groupby('Payment_Problems')['Rating'].mean().diff().iloc[-1],
+        'Food Quality': filtered_df.groupby('Food_Quality')['Rating'].mean().diff().iloc[-1],
+        'Promotions Issues': filtered_df.groupby('Promotions_Issues')['Rating'].mean().diff().iloc[-1],
+        'Subscription Complaint': filtered_df.groupby('Subscription_Complaint')['Rating'].mean().diff().iloc[-1]
+    }
+
+    # Ensure both frequency_data and impact_data have the same keys and length
+    issues = list(frequency_data.keys())
+
+    # Create the DataFrame
+    priority_data = {
+        'Issue Type': issues,
+        'Frequency': [frequency_data[issue] for issue in issues],
+        'Impact': [impact_data[issue] for issue in issues]
+    }
+
     priority_df = pd.DataFrame(priority_data)
+
+    # Check if the DataFrame is empty
     if not priority_df.empty:
         fig = px.scatter(priority_df, x='Frequency', y='Impact', text='Issue Type',
                         size='Frequency', color='Issue Type',
@@ -1810,7 +2720,13 @@ with tab5:
             'UI Issues': filtered_df['UI_Issue'].mean(),
             'Performance Issues': filtered_df['Performance_Issue'].mean(),
             'Support Complaints': filtered_df['Support_Complaint'].mean(),
-            'Pricing Concerns': filtered_df['Pricing_Complaint'].mean()
+            'Pricing Concerns': filtered_df['Pricing_Complaint'].mean(),
+            'Feature Requests': filtered_df['Feature_Request'].mean(),
+            'Delivery Issues': filtered_df['delivery_issues'].mean(),
+            'Payment Problems': filtered_df['Payment_Problems'].mean(),
+            'Food Quality': filtered_df['Food_Quality'].mean(),
+            'Promotions Issues': filtered_df['Promotions_Issues'].mean(),
+            'Subscription Complaints': filtered_df['Subscription_Complaint'].mean()
         }
         
         # Sort by most frequent issues
@@ -1837,7 +2753,15 @@ with tab5:
             'Rating': 'mean',
             'Sentiment_Score': 'mean',
             'UI_Issue': 'mean',
-            'Performance_Issue': 'mean'
+            'Performance_Issue': 'mean',
+            'Feature_Request': 'mean',
+            'Support_Complaint': 'mean',
+            'Pricing_Complaint': 'mean',
+            'delivery_issues': 'mean',
+            'Payment_Problems': 'mean',
+            'Food_Quality': 'mean',
+            'Promotions_Issues': 'mean',
+            'Subscription_Complaint': 'mean'
         }).reset_index()
         
         fig = px.line(monthly_data, x='Month_Year', y=['Rating', 'Sentiment_Score'],
@@ -1931,7 +2855,7 @@ with tab5:
         st.download_button(
             label="📥 Download Full Report",
             data=report_data,
-            file_name="Car Info_app_report.pdf",
+            file_name="Josh App_app_report.pdf",
             mime="application/pdf"
         )
     else:
@@ -1969,7 +2893,7 @@ with tab6:  # New Strategy tab
     with st.expander("📊 Competitive Benchmarking", expanded=True):
         # Mock competitor data - in real implementation use actual competitor data
         competitors = {
-            'Car Info': {
+            'Josh App': {
                 'Rating': avg_rating,
                 'Response Rate': response_rate,
                 'Positive Sentiment': pos_percent,
@@ -2119,7 +3043,7 @@ st.sidebar.markdown(f"""
 ### About This Dashboard
 
 **Purpose:**  
-Comprehensive analysis of Car Info app reviews to identify improvement opportunities.
+Comprehensive analysis of Josh App reviews to identify improvement opportunities.
 
 **Data Source:**  
 Google Play Store reviews ({datetime.now().strftime('%Y-%m-%d')})
