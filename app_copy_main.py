@@ -204,7 +204,7 @@ def generate_forecast(df):
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Josh_App.csv")
+    df = pd.read_csv("reviews_bluetooth-1.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()
@@ -218,7 +218,7 @@ def load_data():
     df = df.assign(Reply=df['Reply'].fillna("No Reply"))
     
     if 'Usefulness' in df.columns:
-        df['Usefulness'] = df['Usefulness'].str.replace(r'[^\d]', '', regex=True)
+        df['Usefulness'] = df['Usefulness']
         df['Usefulness'] = pd.to_numeric(df['Usefulness'], errors='coerce').fillna(0).astype('Int64')
     
     # Sentiment Analysis

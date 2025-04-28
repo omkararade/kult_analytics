@@ -35,7 +35,7 @@ except:
 
 # App Configuration
 st.set_page_config(
-    page_title="Swiggy App Analytics Dashboard",
+    page_title="Bluetooth Thermal PrinterApp Analytics Report",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -163,7 +163,7 @@ def generate_report(df):
         
         # Title
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, txt="Josh App Analytics Report", ln=1, align='C')
+        pdf.cell(200, 10, txt="Bluetooth Thermal Printer Review Analytics Report", ln=1, align='C')
         pdf.set_font("Arial", size=12)
         
         # Date
@@ -348,7 +348,7 @@ def generate_forecast(df):
     
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Swiggy_13k+.csv")
+    df = pd.read_csv("reviews_bluetooth-1.csv")
     
     # Data Cleaning and Preprocessing
     df = df.copy()
@@ -362,7 +362,7 @@ def load_data():
     df = df.assign(Reply=df['Reply'].fillna("No Reply"))
     
     if 'Usefulness' in df.columns:
-        df['Usefulness'] = df['Usefulness'].str.replace(r'[^\d]', '', regex=True)
+        df['Usefulness'] = df['Usefulness']
         df['Usefulness'] = pd.to_numeric(df['Usefulness'], errors='coerce').fillna(0).astype('Int64')
     
     # Sentiment Analysis
@@ -556,7 +556,7 @@ filtered_df = df[
 ].copy()
 
 # Main Dashboard
-st.title("Josh App Analytics Dashboard")
+st.title("Bluetooth Thermal Printer App Analytics Report")
 
 # KPI Cards with Competitive Benchmark
 col1, col2, col3, col4,col5,col6 = st.columns(6)
@@ -1251,7 +1251,7 @@ with tab1:
 
     # Add corporate watermark
     sunburst.add_annotation(
-        text="Josh App",
+        text="Bluetooth Thermal Printer App",
         x=0.5, y=-0.1,
         showarrow=False,
         font=dict(
@@ -1908,7 +1908,12 @@ with tab3:
                 (\b[A-Z][a-z]+(?:\s+[A-Za-z]+){0,3}\b)  # Capture noun phrases
                 \s+
                 (is|are|was|were|has|have|'s)\s+  # Common linking verbs
-                (awesome|great|excellent|amazing|love|like|good|fantastic|superb|perfect|useful|helpful|easy|intuitive)
+                (awesome|great|excellent|amazing|love|like|good|fantastic|superb|perfect|useful|helpful|easy|intuitive
+                |Registration|Listings|Search|Filter| Menu Browsing|Placement|Tracking| 
+                Payment| Discounts And Offers| User Reviews And Ratings|History|Notifications| 
+                Customer Support | Multiple Payment Options | Loyalty| Delivery Partner App | In App Chat | Scheduled Orders | 
+                Multi Language Support | Referral|Customization  |Tracking|Management|Scheduling|Dispatch| Management |
+                Routing |Gift Card Management |Menu Management |Delivery Tracking |For Restaurants |Online Ordering |For Courier Services |For Customers |For Delivery Partners)
             """
             
             # Extract feature-praise pairs
@@ -2670,10 +2675,9 @@ with tab5:
             rating_dist = filtered_df['Rating'].value_counts().sort_index()
             fig = px.bar(rating_dist, 
                         labels={'value': 'Count', 'index': 'Stars'},
-                        color_discrete_sequence=['#FF0000']  # Pure red hex code
+                        color_discrete_sequence=['#CB2726']  # Pure red hex code
                         )
-            fig.update_traces(marker_color='#CB2726',  # Ensures full red coloring
-                            selector=dict(type='bar'))
+            
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
@@ -2855,7 +2859,7 @@ with tab5:
         st.download_button(
             label="📥 Download Full Report",
             data=report_data,
-            file_name="Josh App_app_report.pdf",
+            file_name="Bluetooth Thermal Printer App_app_report.pdf",
             mime="application/pdf"
         )
     else:
@@ -2893,7 +2897,7 @@ with tab6:  # New Strategy tab
     with st.expander("📊 Competitive Benchmarking", expanded=True):
         # Mock competitor data - in real implementation use actual competitor data
         competitors = {
-            'Josh App': {
+            'Bluetooth Thermal Printer App': {
                 'Rating': avg_rating,
                 'Response Rate': response_rate,
                 'Positive Sentiment': pos_percent,
@@ -3043,7 +3047,7 @@ st.sidebar.markdown(f"""
 ### About This Dashboard
 
 **Purpose:**  
-Comprehensive analysis of Josh App reviews to identify improvement opportunities.
+Comprehensive analysis of Bluetooth Thermal Printer App reviews to identify improvement opportunities.
 
 **Data Source:**  
 Google Play Store reviews ({datetime.now().strftime('%Y-%m-%d')})
